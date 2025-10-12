@@ -1,0 +1,24 @@
+# --- render.yaml для Peachmini API ---
+services:
+  - type: web
+    name: peachmini-api
+    env: docker
+    region: frankfurt
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: ./
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_PORT
+        value: 8787
+      - key: WEBAPP_ORIGIN
+        value: https://peach-hcska9bgh-trsoyoleg-4006s-projects.vercel.app
+      - key: PB_URL
+        value: http://127.0.0.1:8090
+      - key: OPENAI_KEY
+        sync: false
+      - key: BOT_TOKEN
+        sync: false
+    healthCheckPath: /health
+

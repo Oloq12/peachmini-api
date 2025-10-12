@@ -1,0 +1,27 @@
+{
+  "name": "ai-girl-bot",
+  "version": "1.0.0",
+  "description": "Telegram AI-Girlfriend bot on Telegraf + PocketBase + OpenAI",
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "index.js",
+
+  "scripts": {
+    "pb": "pocketbase serve",
+    "bot": "node index.js",
+    "dev": "concurrently -k \"npm:pb\" \"npm:bot\"",
+    "start": "node index.js",
+    "api": "cd bot && node api.cjs"
+  },
+
+  "dependencies": {
+    "dotenv": "^16.4.4",
+    "openai": "3.3.0",
+    "pocketbase": "^0.26.1",
+    "telegraf": "^4.16.3"
+  },
+
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  }
+}

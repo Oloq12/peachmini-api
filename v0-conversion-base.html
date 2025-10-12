@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peach Mini - AI Компаньоны (на основе v0)</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #111116 0%, #1a1a2e 50%, #16213e 100%);
+            color: white;
+            min-height: 100vh;
+        }
+
+        .app {
+            max-width: 420px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 20px 16px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #ff6b9d, #667eea);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .main {
+            flex: 1;
+            padding-bottom: 100px;
+        }
+
+        /* 3D КАРУСЕЛЬ из v0 */
+        .gallery {
+            height: 360px;
+            perspective: 1000px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .carousel {
+            position: relative;
+            width: 100%;
+            height: 280px;
+            transform-style: preserve-3d;
+            transition: transform 1s ease;
+        }
+
+        .card {
+            position: absolute;
+            width: 200px;
+            height: 280px;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.5s ease;
+        }
+
+        .card.active {
+            transform: scale(1.05);
+            box-shadow: 0 20px 40px rgba(255, 107, 157, 0.3);
+        }
+
+        .card-img {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #ff6b9d, #667eea);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+        }
+
+        .card-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+        }
+
+        .card-info {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            color: white;
+        }
+
+        /* КНОПКА СОЗДАНИЯ */
+        .create-btn {
+            margin: 24px 16px;
+            padding: 16px;
+            background: linear-gradient(135deg, #f093fb, #667eea);
+            border: none;
+            border-radius: 16px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        /* КАТАЛОГ из v0 */
+        .catalog {
+            padding: 0 16px;
+        }
+
+        .filters {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .filter {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .filter.active {
+            background: linear-gradient(135deg, #ff6b9d, #667eea);
+            color: white;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .catalog-card {
+            position: relative;
+            height: 240px;
+            border-radius: 16px;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .create-card {
+            background: linear-gradient(135deg, rgba(255, 107, 157, 0.1), rgba(102, 126, 234, 0.1));
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 16px;
+        }
+
+        /* НАВИГАЦИЯ из v0 */
+        .nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 420px;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            display: flex;
+            justify-content: space-around;
+            z-index: 1000;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px;
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.75rem;
+            border-radius: 12px;
+            min-width: 60px;
+        }
+
+        .nav-item.active { color: #ff6b9d; }
+
+        .nav-item.create {
+            background: linear-gradient(135deg, #f093fb, #667eea);
+            color: white !important;
+        }
+
+        .nav-icon {
+            font-size: 1.5rem;
+            margin-bottom: 4px;
+        }
+
+        /* СТРАНИЦЫ */
+        .page {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            min-height: 100vh;
+            background: inherit;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ТЕГИ ДЛЯ СОЗДАНИЯ */
+        .tag {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .tag.selected {
+            background: linear-gradient(135deg, #ff6b9d, #667eea);
+            color: white;
+            border-color: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- ХЕДЕР -->
+        <header class="header">
+            <h1>Найди свою пару</h1>
+            <p style="color: rgba(255,255,255,0.6);">Начни общаться с AI-компаньонами</p>
+        </header>
+
+        <!-- ОСНОВНОЙ КОНТЕНТ - ГЛАВНАЯ СТРАНИЦА -->
+        <main class="main" id="home-content">
+            <!-- 3D ГАЛЕРЕЯ (из v0) -->
+            <section class="gallery">
+                <div class="carousel" id="carousel"></div>
+            </section>
+
+            <!-- КНОПКА СОЗДАНИЯ -->
+            <button class="create-btn" onclick="navigateTo('create')">
+                ⭐ Создайте своего спутника
+            </button>
+
+            <!-- КАТАЛОГ (из v0) -->
+            <section class="catalog">
+                <div class="filters">
+                    <button class="filter active" onclick="filterChars('all')">Все модели</button>
+                    <button class="filter" onclick="filterChars('real')">Реальный</button>
+                    <button class="filter" onclick="filterChars('anime')">Аниме</button>
+                </div>
+                <div class="grid" id="grid"></div>
+            </section>
+        </main>
+
+        <!-- СТРАНИЦА СОЗДАНИЯ КОМПАНЬОНА -->
+        <div class="page" id="page-create" style="display: none;">
+            <div style="padding: 20px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(10px); display: flex; align-items: center; position: relative;">
+                <button style="position: absolute; left: 16px; background: rgba(255, 255, 255, 0.1); border: none; border-radius: 12px; color: white; padding: 8px 12px; cursor: pointer;" onclick="navigateTo('home')">←</button>
+                <h1 style="flex: 1; font-size: 1.5rem; font-weight: bold; background: linear-gradient(135deg, #ff6b9d, #667eea); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">⭐ Создать компаньона</h1>
+            </div>
+            <div style="padding: 20px 16px; padding-bottom: 100px;">
+                <div style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 2px dashed rgba(255, 255, 255, 0.2); border-radius: 20px; padding: 40px 20px; text-align: center; margin-bottom: 30px; cursor: pointer;" onclick="uploadPhoto()">
+                    <div style="font-size: 4rem; color: #ff6b9d; margin-bottom: 16px;">📷</div>
+                    <h3>Загрузить фото девушки</h3>
+                    <p style="color: rgba(255,255,255,0.6);">JPEG/PNG, максимум 10MB</p>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border-radius: 20px; padding: 24px; margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                    <h3 style="margin-bottom: 15px;">👤 Основные данные</h3>
+                    <input type="text" placeholder="Имя компаньона..." style="width: 100%; padding: 12px 16px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; color: white; font-size: 1rem; margin-bottom: 15px;" id="companionNameCreate">
+                    <input type="number" placeholder="Возраст (18-35)" min="18" max="35" value="25" style="width: 100%; padding: 12px 16px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; color: white; font-size: 1rem; margin-bottom: 15px;" id="companionAgeCreate">
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border-radius: 20px; padding: 24px; margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                    <h3 style="margin-bottom: 15px;">🎭 Характер</h3>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        <div class="tag" onclick="toggleCreateTag(this)">Игривая</div>
+                        <div class="tag" onclick="toggleCreateTag(this)">Романтичная</div>
+                        <div class="tag" onclick="toggleCreateTag(this)">Умная</div>
+                        <div class="tag" onclick="toggleCreateTag(this)">Загадочная</div>
+                        <div class="tag" onclick="toggleCreateTag(this)">Дерзкая</div>
+                        <div class="tag" onclick="toggleCreateTag(this)">Нежная</div>
+                    </div>
+                </div>
+                <button style="width: 100%; padding: 16px; background: linear-gradient(135deg, #f093fb, #667eea); border: none; border-radius: 16px; color: white; font-size: 1.1rem; font-weight: bold; cursor: pointer;" onclick="createCustomCompanion()">💎 Создать за 100 звезд</button>
+            </div>
+        </div>
+
+        <!-- СТРАНИЦА МОИ КОМПАНЬОНЫ -->
+        <div class="page" id="page-companions" style="display: none;">
+            <div style="padding: 20px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(10px); display: flex; align-items: center; position: relative;">
+                <button style="position: absolute; left: 16px; background: rgba(255, 255, 255, 0.1); border: none; border-radius: 12px; color: white; padding: 8px 12px; cursor: pointer;" onclick="navigateTo('home')">←</button>
+                <h1 style="flex: 1; font-size: 1.5rem; font-weight: bold; background: linear-gradient(135deg, #ff6b9d, #667eea); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">👥 Мои компаньоны</h1>
+            </div>
+            <div style="padding: 20px 16px; padding-bottom: 100px;">
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+                    <div style="background: linear-gradient(135deg, rgba(255, 107, 157, 0.1), rgba(102, 126, 234, 0.1)); border: 2px dashed rgba(255, 255, 255, 0.2); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px 16px; cursor: pointer; height: 240px;" onclick="navigateTo('create')">
+                        <div style="font-size: 3rem; color: #ff6b9d; margin-bottom: 10px;">⭐</div>
+                        <h3>Создать нового компаньона</h3>
+                    </div>
+                    <div style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border-radius: 16px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.1); cursor: pointer; height: 240px;" onclick="openIndividualChat('Анна')">
+                        <div style="width: 100%; height: 150px; background: linear-gradient(45deg, #ff6b9d, #667eea); display: flex; align-items: center; justify-content: center; font-size: 3rem;">😇</div>
+                        <div style="padding: 16px;">
+                            <div style="font-size: 1.1rem; font-weight: bold; margin-bottom: 4px;">Анна</div>
+                            <div style="font-size: 0.8rem; color: rgba(255, 255, 255, 0.6);">25 лет • В сети</div>
+                        </div>
+                    </div>
+                    <div style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border-radius: 16px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.1); cursor: pointer; height: 240px;" onclick="openIndividualChat('Мия')">
+                        <div style="width: 100%; height: 150px; background: linear-gradient(45deg, #ff6b9d, #667eea); display: flex; align-items: center; justify-content: center; font-size: 3rem;">😊</div>
+                        <div style="padding: 16px;">
+                            <div style="font-size: 1.1rem; font-weight: bold; margin-bottom: 4px;">Мия</div>
+                            <div style="font-size: 0.8rem; color: rgba(255, 255, 255, 0.6);">23 года • Недавно</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- СТРАНИЦА ЧАТОВ -->
+        <div class="page" id="page-chat" style="display: none;">
+            <div style="padding: 20px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(10px); display: flex; align-items: center; position: relative;">
+                <button style="position: absolute; left: 16px; background: rgba(255, 255, 255, 0.1); border: none; border-radius: 12px; color: white; padding: 8px 12px; cursor: pointer;" onclick="navigateTo('home')">←</button>
+                <h1 style="flex: 1; font-size: 1.5rem; font-weight: bold; background: linear-gradient(135deg, #ff6b9d, #667eea); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">💬 Чаты</h1>
+            </div>
+            <div style="padding: 20px 16px; padding-bottom: 100px;">
+                <div style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border-radius: 16px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(255, 255, 255, 0.1); cursor: pointer; display: flex; align-items: center; gap: 16px;" onclick="openIndividualChat('Анна')">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(45deg, #ff6b9d, #667eea); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">😇</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold; margin-bottom: 4px;">Анна</div>
+                        <div style="font-size: 0.9rem; color: rgba(255, 255, 255, 0.6);">Привет! Как дела? 😘</div>
+                    </div>
+                    <div style="color: rgba(255, 255, 255, 0.4); font-size: 0.8rem;">15:30</div>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border-radius: 16px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(255, 255, 255, 0.1); cursor: pointer; display: flex; align-items: center; gap: 16px;" onclick="openIndividualChat('Мия')">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(45deg, #ff6b9d, #667eea); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">😊</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold; margin-bottom: 4px;">Мия</div>
+                        <div style="font-size: 0.9rem; color: rgba(255, 255, 255, 0.6);">Спасибо за подарок! 💕</div>
+                    </div>
+                    <div style="color: rgba(255, 255, 255, 0.4); font-size: 0.8rem;">14:45</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- СТРАНИЦА ГЕНЕРАЦИИ -->
+        <div class="page" id="page-generate" style="display: none;">
+            <div style="padding: 20px 16px; text-align: center; background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(10px); display: flex; align-items: center; position: relative;">
+                <button style="position: absolute; left: 16px; background: rgba(255, 255, 255, 0.1); border: none; border-radius: 12px; color: white; padding: 8px 12px; cursor: pointer;" onclick="navigateTo('home')">←</button>
+                <h1 style="flex: 1; font-size: 1.5rem; font-weight: bold; background: linear-gradient(135deg, #ff6b9d, #667eea); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">🎨 Генерация фото</h1>
+            </div>
+            <div style="padding: 20px 16px; padding-bottom: 100px;">
+                <div style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border-radius: 20px; padding: 24px; margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.1); text-align: center;">
+                    <div style="font-size: 3rem; color: #ff6b9d; margin-bottom: 16px;">🎨</div>
+                    <h3>Генерация AI-фото</h3>
+                    <p style="color: rgba(255,255,255,0.6); margin: 16px 0;">Создайте уникальные фото ваших компаньонов с помощью ИИ</p>
+                    <button style="width: 100%; padding: 16px; background: linear-gradient(135deg, #f093fb, #667eea); border: none; border-radius: 16px; color: white; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 20px;" onclick="generatePhoto()">💎 Генерировать за 25 звезд</button>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border-radius: 20px; padding: 24px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                    <h3 style="margin-bottom: 15px;">🛒 Пакеты генерации</h3>
+                    <div style="margin-bottom: 12px; padding: 12px; background: rgba(255, 255, 255, 0.05); border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>5 фото</span>
+                        <button style="padding: 8px 16px; background: linear-gradient(135deg, #ff6b9d, #667eea); border: none; border-radius: 8px; color: white; cursor: pointer;">100⭐</button>
+                    </div>
+                    <div style="margin-bottom: 12px; padding: 12px; background: rgba(255, 255, 255, 0.05); border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>20 фото</span>
+                        <button style="padding: 8px 16px; background: linear-gradient(135deg, #ff6b9d, #667eea); border: none; border-radius: 8px; color: white; cursor: pointer;">350⭐</button>
+                    </div>
+                    <div style="margin-bottom: 12px; padding: 12px; background: rgba(255, 255, 255, 0.05); border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>50 фото</span>
+                        <button style="padding: 8px 16px; background: linear-gradient(135deg, #ff6b9d, #667eea); border: none; border-radius: 8px; color: white; cursor: pointer;">750⭐</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ИНДИВИДУАЛЬНЫЙ ЧАТ -->
+        <div class="page" id="page-individual-chat" style="display: none;">
+            <div style="padding: 16px; background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(10px); display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
+                <button style="background: rgba(255, 255, 255, 0.1); border: none; border-radius: 12px; color: white; padding: 8px 12px; cursor: pointer;" onclick="navigateTo('chat')">←</button>
+                <div style="width: 40px; height: 40px; background: linear-gradient(45deg, #ff6b9d, #667eea); border-radius: 50%; display: flex; align-items: center; justify-content: center;" id="chatAvatar">😇</div>
+                <div style="flex: 1;">
+                    <div style="font-weight: bold;" id="chatName">Анна</div>
+                    <div style="font-size: 0.8rem; color: rgba(255, 255, 255, 0.6);">В сети</div>
+                </div>
+            </div>
+            <div style="flex: 1; padding: 16px; overflow-y: auto; padding-bottom: 80px;" id="chatMessages">
+                <div style="background: rgba(255, 255, 255, 0.1); padding: 12px 16px; border-radius: 16px; margin-bottom: 12px; max-width: 80%; margin-left: auto;">
+                    Привет! Как дела? 😊
+                </div>
+                <div style="background: linear-gradient(135deg, #ff6b9d, #667eea); padding: 12px 16px; border-radius: 16px; margin-bottom: 12px; max-width: 80%;">
+                    Привет! Отлично, спасибо! А у тебя как? 💕
+                </div>
+            </div>
+            <div style="position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 420px; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(20px); padding: 16px; display: flex; gap: 12px;">
+                <input type="text" placeholder="Напишите сообщение..." style="flex: 1; padding: 12px 16px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; color: white;" id="messageInput">
+                <button style="width: 44px; height: 44px; background: linear-gradient(135deg, #ff6b9d, #667eea); border: none; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center;" onclick="sendMessage()">→</button>
+            </div>
+        </div>
+
+        <!-- НАВИГАЦИЯ (из v0) -->
+        <nav class="nav">
+            <a href="#" class="nav-item active" onclick="navigateTo('home')">
+                <div class="nav-icon">🏠</div>
+                <span>Домой</span>
+            </a>
+            <a href="#" class="nav-item" onclick="navigateTo('chat')">
+                <div class="nav-icon">💬</div>
+                <span>Чат</span>
+            </a>
+            <a href="#" class="nav-item create" onclick="navigateTo('create')">
+                <div class="nav-icon">⭐</div>
+                <span>Создать</span>
+            </a>
+            <a href="#" class="nav-item" onclick="navigateTo('generate')">
+                <div class="nav-icon">🎨</div>
+                <span>Генерация</span>
+            </a>
+            <a href="#" class="nav-item" onclick="navigateTo('companions')">
+                <div class="nav-icon">👥</div>
+                <span>Мои</span>
+            </a>
+        </nav>
+    </div>
+
+    <script>
+        // ДАННЫЕ из v0
+        const chars = [
+            { emoji: "😇", name: "Лила", age: 22, personality: "Милая и невинная" },
+            { emoji: "😈", name: "Рокси", age: 24, personality: "Дерзкая и игривая" },
+            { emoji: "🧠", name: "Элара", age: 26, personality: "Умная и загадочная" },
+            { emoji: "🎨", name: "Хлоя", age: 21, personality: "Творческая и мечтательная" },
+            { emoji: "🔥", name: "Серафина", age: 25, personality: "Страстная и уверенная" },
+            { emoji: "😊", name: "Мия", age: 23, personality: "Добрая и заботливая" }
+        ];
+
+        const catalog = [
+            { name: "Лила", age: 18, tag: "Аниме" },
+            { name: "Ария", age: 25, tag: "Аниме" },
+            { name: "Серена", age: 28, tag: "Реальный" },
+            { name: "Хлоя", age: 24, tag: "Реальный" }
+        ];
+
+        let currentIndex = 0;
+
+        // TELEGRAM
+        if (window.Telegram?.WebApp) {
+            window.Telegram.WebApp.ready();
+            console.log('📱 Telegram Web App готов');
+        }
+
+        // СОЗДАНИЕ КАРУСЕЛИ (адаптация v0 логики)
+        function createCarousel() {
+            const carousel = document.getElementById('carousel');
+            const angle = 360 / chars.length;
+
+            chars.forEach((char, i) => {
+                const card = document.createElement('div');
+                card.className = `card ${i === 0 ? 'active' : ''}`;
+                card.style.transform = `rotateY(${i * angle}deg) translateZ(200px)`;
+                
+                card.innerHTML = `
+                    <div class="card-img">${char.emoji}</div>
+                    <div class="card-overlay"></div>
+                    <div class="card-info">
+                        <div style="font-size: 1.5rem;">${char.emoji}</div>
+                        <div style="font-weight: bold; font-size: 1.25rem;">${char.name} <span style="font-weight: 300;">${char.age}</span></div>
+                        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.7); margin-top: 4px;">${char.personality}</div>
+                    </div>
+                `;
+                
+                card.onclick = () => selectChar(char);
+                carousel.appendChild(card);
+            });
+
+            // Автовращение как в v0
+            setInterval(() => {
+                currentIndex = (currentIndex + 1) % chars.length;
+                rotateCarousel();
+            }, 3000);
+        }
+
+        function rotateCarousel() {
+            const carousel = document.getElementById('carousel');
+            const angle = 360 / chars.length;
+            carousel.style.transform = `rotateY(${-currentIndex * angle}deg)`;
+            
+            document.querySelectorAll('.card').forEach((card, i) => {
+                card.classList.toggle('active', i === currentIndex);
+            });
+        }
+
+        // СОЗДАНИЕ КАТАЛОГА (адаптация v0)
+        function createCatalog() {
+            const grid = document.getElementById('grid');
+            
+            // Карточка создания
+            const createCard = document.createElement('div');
+            createCard.className = 'catalog-card create-card';
+            createCard.innerHTML = `
+                <div style="font-size: 3rem; color: #ff6b9d;">⭐</div>
+                <h3 style="font-weight: bold; margin-top: 8px;">Создайте своего спутника</h3>
+            `;
+            createCard.onclick = () => navigateTo('create');
+            grid.appendChild(createCard);
+
+            // Персонажи
+            catalog.forEach(char => {
+                const card = document.createElement('div');
+                card.className = 'catalog-card';
+                card.setAttribute('data-tag', char.tag.toLowerCase());
+                
+                card.innerHTML = `
+                    <div style="width: 100%; height: 100%; background: linear-gradient(45deg, #ff6b9d, #667eea); display: flex; align-items: center; justify-content: center; font-size: 2rem;">👤</div>
+                    <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);"></div>
+                    <div style="position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.3); backdrop-filter: blur(10px); color: white; font-size: 0.75rem; padding: 4px 8px; border-radius: 12px;">${char.tag}</div>
+                    <div style="position: absolute; bottom: 8px; left: 8px; color: white; font-weight: bold;">${char.name} ${char.age}</div>
+                `;
+                
+                card.onclick = () => selectChar(char);
+                grid.appendChild(card);
+            });
+        }
+
+        // ФИЛЬТРАЦИЯ (из v0)
+        function filterChars(filter) {
+            document.querySelectorAll('.filter').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            document.querySelectorAll('.catalog-card').forEach(card => {
+                if (card.classList.contains('create-card')) {
+                    card.style.display = 'flex';
+                    return;
+                }
+
+                const tag = card.getAttribute('data-tag');
+                if (filter === 'all' || 
+                    (filter === 'real' && tag === 'реальный') || 
+                    (filter === 'anime' && tag === 'аниме')) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // НАВИГАЦИЯ МЕЖДУ СТРАНИЦАМИ
+        function navigateTo(page) {
+            // Скрыть все страницы
+            document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+            document.getElementById('home-content').style.display = 'none';
+            
+            // Обновить навигацию
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            
+            // Показать нужную страницу
+            if (page === 'home') {
+                document.getElementById('home-content').style.display = 'block';
+                document.querySelector('.nav-item[onclick="navigateTo(\'home\')"]').classList.add('active');
+            } else {
+                document.getElementById(`page-${page}`).style.display = 'flex';
+                document.querySelector(`.nav-item[onclick="navigateTo('${page}')"]`).classList.add('active');
+            }
+            
+            // Отправить в Telegram
+            if (window.Telegram?.WebApp) {
+                window.Telegram.WebApp.sendData(JSON.stringify({
+                    action: 'navigate',
+                    page: page
+                }));
+            }
+            
+            console.log('🔥 Переход на:', page);
+        }
+
+        // СОЗДАНИЕ КАСТОМНОГО КОМПАНЬОНА
+        function toggleCreateTag(element) {
+            element.classList.toggle('selected');
+        }
+
+        function uploadPhoto() {
+            alert('📷 Функция загрузки фото будет доступна после интеграции с ботом!');
+        }
+
+        function createCustomCompanion() {
+            const name = document.getElementById('companionNameCreate').value || 'Анна';
+            const age = document.getElementById('companionAgeCreate').value || '25';
+            const personality = Array.from(document.querySelectorAll('#page-create .tag.selected')).map(tag => tag.textContent);
+            
+            const companionData = {
+                name: name,
+                age: age,
+                personality: personality
+            };
+            
+            if (window.Telegram?.WebApp) {
+                window.Telegram.WebApp.sendData(JSON.stringify({
+                    action: 'create_custom_companion',
+                    data: companionData
+                }));
+            }
+            
+            alert(`🎉 Компаньон "${name}" создан! Возраст: ${age}, характер: ${personality.join(', ') || 'Загадочная'}`);
+            navigateTo('companions');
+            console.log('🎨 Создан компаньон:', companionData);
+        }
+
+        // ИНДИВИДУАЛЬНЫЙ ЧАТ
+        function openIndividualChat(name) {
+            document.getElementById('chatName').textContent = name;
+            document.getElementById('chatAvatar').textContent = name === 'Анна' ? '😇' : '😊';
+            navigateTo('individual-chat');
+            
+            if (window.Telegram?.WebApp) {
+                window.Telegram.WebApp.sendData(JSON.stringify({
+                    action: 'open_individual_chat',
+                    companion: name
+                }));
+            }
+            
+            console.log('💬 Открыт чат с:', name);
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            if (!message) return;
+            
+            // Добавить сообщение в чат
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageElement = document.createElement('div');
+            messageElement.style.cssText = 'background: rgba(255, 255, 255, 0.1); padding: 12px 16px; border-radius: 16px; margin-bottom: 12px; max-width: 80%; margin-left: auto;';
+            messageElement.textContent = message;
+            messagesContainer.appendChild(messageElement);
+            
+            // Очистить поле
+            input.value = '';
+            
+            // Отправить в бот
+            if (window.Telegram?.WebApp) {
+                window.Telegram.WebApp.sendData(JSON.stringify({
+                    action: 'send_message',
+                    message: message,
+                    companion: document.getElementById('chatName').textContent
+                }));
+            }
+            
+            // Имитация ответа
+            setTimeout(() => {
+                const responseElement = document.createElement('div');
+                responseElement.style.cssText = 'background: linear-gradient(135deg, #ff6b9d, #667eea); padding: 12px 16px; border-radius: 16px; margin-bottom: 12px; max-width: 80%;';
+                responseElement.textContent = 'Спасибо за сообщение! 💕 (ответ от ИИ будет после интеграции с ботом)';
+                messagesContainer.appendChild(responseElement);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }, 1000);
+            
+            console.log('📨 Отправлено:', message);
+        }
+
+        // ГЕНЕРАЦИЯ ФОТО
+        function generatePhoto() {
+            if (window.Telegram?.WebApp) {
+                window.Telegram.WebApp.sendData(JSON.stringify({
+                    action: 'generate_photo'
+                }));
+            }
+            
+            alert('🎨 Генерация фото будет доступна после интеграции с ИИ!');
+            console.log('🎨 Запрос на генерацию фото');
+        }
+
+        // ВЫБОР ПЕРСОНАЖА
+        function selectChar(char) {
+            if (window.Telegram?.WebApp) {
+                window.Telegram.WebApp.sendData(JSON.stringify({
+                    action: 'select_character',
+                    character: char.name,
+                    age: char.age,
+                    personality: char.personality || char.tag
+                }));
+            }
+            console.log('👤 Выбран:', char.name);
+        }
+
+        // ИНИЦИАЛИЗАЦИЯ
+        document.addEventListener('DOMContentLoaded', function() {
+            createCarousel();
+            createCatalog();
+            console.log('🚀 Peach Web App загружен (v0 дизайн конвертирован)');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+[
+  {
+    "id": "nastya",
+    "name_ru": "Настя",
+    "name_en": "Nastya",
+    "gender": "female",
+    "type": "real",
+    "img": "https://placekitten.com/260/300",
+    "tags_ru": ["реал", "игривая"],
+    "tags_en": ["real", "playful"],
+    "price_photo": 3
+  },
+  {
+    "id": "mika",
+    "name_ru": "Мика",
+    "name_en": "Mika",
+    "gender": "female",
+    "type": "anime",
+    "img": "https://placekitten.com/261/300",
+    "tags_ru": ["аниме", "цундэрэ"],
+    "tags_en": ["anime", "tsundere"],
+    "price_photo": 2
+  }
+]
