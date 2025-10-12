@@ -515,49 +515,64 @@ bot.use((ctx, next) => {
 
 // 🚀 /app — открытие WebApp через клавиатуру с web_app кнопкой
 bot.command('app', async ctx => {
-  console.log('🚀 Обработка команды /app');
+  const tgId = ctx.from.id;
+  const userName = ctx.from.first_name || 'друг';
   const webappUrl = process.env.WEBAPP_URL || 'http://localhost:5173';
-  console.log(`   WebApp URL: ${webappUrl}`);
+  
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('🚀 /app от:', tgId, `(${userName})`);
+  console.log('🌐 WebApp URL:', webappUrl);
   
   await ctx.reply(
-    `🚀 ОТКРЫТЬ PEACHMINI WEB APP\n\n` +
+    `🚀 *PEACHMINI WEB APP*\n\n` +
     `✨ Красивый интерфейс с:\n` +
-    `• 🏠 Главная страница\n` +
-    `• 💬 Чаты с девушками\n` +
-    `• ✨ Создание персонажа\n` +
-    `• 🛍️ Магазин\n` +
-    `• ⚙️ Настройки\n\n` +
-    `👇 Нажмите кнопку ниже:`,
-    Markup.keyboard([
-      [Markup.button.webApp('🚀 Открыть Peachmini', webappUrl)],
-      ['🔙 Назад в меню']
-    ]).resize()
+    `• 🏠 Галерея персонажей\n` +
+    `• 💬 Чаты с AI компаньонами\n` +
+    `• ✨ Создание своего персонажа\n` +
+    `• 🛍️ Магазин и бонусы\n` +
+    `• ⚙️ Настройки профиля\n\n` +
+    `👇 *Нажми кнопку ниже:*`,
+    {
+      parse_mode: 'Markdown',
+      ...Markup.keyboard([
+        [Markup.button.webApp('🚀 Открыть Peachmini', webappUrl)],
+        ['🔙 Назад в меню']
+      ]).resize()
+    }
   );
+  
+  console.log('✅ /app обработан успешно');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 });
 
 // /start — приветствие с обработкой реферальных кодов
 bot.start(async (ctx) => {
-  console.log('🏁 Обработка команды /start');
   const tgId = ctx.from.id;
+  const userName = ctx.from.first_name || 'друг';
+  
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('🏁 /start от:', tgId, `(${userName})`);
   
   try {
-    // Проверяем, есть ли реферальный код в параметрах
+    // Проверяем реферальный код
     const startPayload = ctx.message.text.split(' ')[1];
     let referralCode = null;
     
     if (startPayload && startPayload.startsWith('ref_')) {
       referralCode = startPayload.replace('ref_', '');
-      console.log('🔗 Реферальный код:', referralCode);
+      console.log('🔗 Реферальный код обнаружен:', referralCode);
     }
     
-    // Создаём или получаем пользователя
+    // Создаём/получаем пользователя в PocketBase
     const user = await ensureUserInDB(tgId);
-    console.log('👤 Пользователь:', user.tgId, 'Реф.код:', user.referralCode);
+    console.log('👤 Пользователь в БД:', user.tgId, '| Код:', user.referralCode);
     
-    // Обрабатываем реферал, если есть код
+    // Обрабатываем реферал через API
     if (referralCode) {
       try {
         const API_URL = process.env.API_URL || 'http://localhost:8787';
+        console.log('📡 Вызов API /ref/apply:', API_URL);
+        
         const response = await fetch(`${API_URL}/ref/apply`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -565,92 +580,156 @@ bot.start(async (ctx) => {
         });
         
         const result = await response.json();
+        console.log('📥 Ответ API:', result);
         
         if (result.ok) {
-          console.log('✅ Реферал засчитан:', result);
+          console.log('✅ Реферал применён! Инвайтер:', result.inviterId, '| Бонус:', result.bonus);
           
-          // Уведомляем пригласившего
+          // Уведомляем пригласившего (если возможно)
           try {
             await ctx.telegram.sendMessage(
               result.inviterId,
-              `🎉 Ваш друг присоединился к Peachmini!\n\n` +
-              `💰 +${result.bonus} PeachPoints\n` +
-              `Используйте команду /ref для просмотра статистики`
+              `🎉 *Ваш друг присоединился!*\n\n` +
+              `💰 +${result.bonus} PeachPoints начислено\n` +
+              `👥 Всего рефералов: проверьте /ref`,
+              { parse_mode: 'Markdown' }
             );
+            console.log('✅ Уведомление отправлено инвайтеру:', result.inviterId);
           } catch (e) {
-            console.log('⚠️ Не удалось уведомить реферрера:', e.message);
+            console.log('⚠️ Не удалось уведомить инвайтера:', e.message);
           }
           
           // Уведомляем нового пользователя
           await ctx.reply(
-            `🎁 Добро пожаловать от друга!\n\n` +
-            `Вы присоединились по приглашению. ` +
-            `Ваш друг получил ${result.bonus} PeachPoints!`
+            `🎁 *Добро пожаловать!*\n\n` +
+            `Вы присоединились по приглашению друга.\n` +
+            `Ваш друг получил *+${result.bonus} PeachPoints*! 💰`,
+            { parse_mode: 'Markdown' }
           );
         } else {
-          console.log('⚠️ Не удалось применить реферал:', result.error);
+          console.log('⚠️ Реферал НЕ применён:', result.error);
+          if (result.error === 'SELF_REFERRAL') {
+            await ctx.reply('⚠️ Нельзя использовать свой собственный реферальный код!');
+          } else if (result.error === 'ALREADY_REFERRED') {
+            await ctx.reply('ℹ️ Вы уже использовали реферальный код ранее.');
+          } else if (result.error === 'INVALID_CODE') {
+            await ctx.reply('❌ Неверный реферальный код.');
+          }
         }
       } catch (e) {
-        console.error('❌ Ошибка применения реферала:', e);
+        console.error('❌ Ошибка вызова API /ref/apply:', e.message);
       }
     }
     
-    // Отправляем приветственное сообщение
-    await ctx.reply('Привет! Я живой 👋', {
-      reply_markup: {
-        keyboard: [[{ text: '🚀 Открыть Peachmini', web_app: { url: process.env.WEBAPP_URL } }]],
-        resize_keyboard: true
+    // Приветственное сообщение
+    const webappUrl = process.env.WEBAPP_URL || 'http://localhost:5173';
+    
+    await ctx.reply(
+      `👋 Привет, *${userName}*!\n\n` +
+      `🍑 Добро пожаловать в *Peachmini* — твой AI компаньон!\n\n` +
+      `✨ Нажми кнопку ниже, чтобы начать:`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          keyboard: [[{ text: '🚀 Открыть Peachmini', web_app: { url: webappUrl } }]],
+          resize_keyboard: true
+        }
       }
-    });
+    );
+    
+    console.log('✅ /start обработан успешно');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
   } catch (e) {
-    console.error('❌ Ошибка в /start:', e);
-    await ctx.reply('Привет! Я живой 👋', {
-      reply_markup: {
-        keyboard: [[{ text: '🚀 Открыть Peachmini', web_app: { url: process.env.WEBAPP_URL } }]],
-        resize_keyboard: true
+    console.error('❌ КРИТИЧЕСКАЯ ОШИБКА в /start:', e.message);
+    console.error('Stack:', e.stack);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    // Fallback приветствие
+    const webappUrl = process.env.WEBAPP_URL || 'http://localhost:5173';
+    await ctx.reply(
+      `👋 Привет!\n\n🚀 Нажми кнопку ниже:`,
+      {
+        reply_markup: {
+          keyboard: [[{ text: '🚀 Открыть Peachmini', web_app: { url: webappUrl } }]],
+          resize_keyboard: true
+        }
       }
-    });
+    );
   }
 });
 
-// /ref — получить реферальную ссылку
+// /ref — получить реферальную ссылку и статистику
 bot.command('ref', async (ctx) => {
-  console.log('🔗 Обработка команды /ref');
   const tgId = ctx.from.id;
+  const userName = ctx.from.first_name || 'друг';
+  
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('🔗 /ref от:', tgId, `(${userName})`);
   
   try {
     // Создаем пользователя, если его нет
-    await ensureUserInDB(tgId);
+    const user = await ensureUserInDB(tgId);
+    console.log('👤 Пользователь в БД:', user.tgId, '| Код:', user.referralCode);
     
     // Получаем статистику через API
     const API_URL = process.env.API_URL || 'http://localhost:8787';
+    console.log('📡 Вызов API /ref/status:', API_URL);
+    
     const response = await fetch(`${API_URL}/ref/status?userId=${tgId}`);
     const data = await response.json();
+    console.log('📥 Ответ API:', data.ok ? 'OK' : data.error);
     
     if (!data.ok) {
-      await ctx.reply('❌ Не удалось получить статистику. Попробуйте позже.');
+      console.error('❌ API вернул ошибку:', data.error);
+      await ctx.reply(
+        `❌ *Не удалось загрузить статистику*\n\n` +
+        `Ошибка: ${data.error}\n\n` +
+        `Попробуйте позже или напишите в поддержку.`,
+        { parse_mode: 'Markdown' }
+      );
       return;
     }
     
     const botUsername = ctx.me.username || 'Amourath_ai_bot';
     const referralLink = `https://t.me/${botUsername}?start=ref_${data.referralCode}`;
     
+    console.log('✅ Реферальная ссылка:', referralLink);
+    console.log('📊 Статистика: рефералов =', data.stats.count, ', заработано =', data.stats.earned, 'PP');
+    
     await ctx.reply(
-      `🔗 *Ваша реферальная ссылка:*\n\n` +
+      `🔗 *РЕФЕРАЛЬНАЯ ПРОГРАММА*\n\n` +
+      `📤 *Ваша ссылка:*\n` +
       `\`${referralLink}\`\n\n` +
       `📊 *Статистика:*\n` +
-      `👥 Рефералов: *${data.stats.count}*\n` +
-      `💰 Награда: *${data.stats.earned} PP*\n` +
-      `💎 Баланс: *${data.stats.balance} PP*\n\n` +
-      `💡 За каждого приглашённого друга вы получаете *+100 PeachPoints*!`,
+      `👥 Приглашено друзей: *${data.stats.count}*\n` +
+      `💰 Заработано: *${data.stats.earned} PP*\n` +
+      `💎 Текущий баланс: *${data.stats.balance} PP*\n\n` +
+      `💡 *Как это работает:*\n` +
+      `• Отправь ссылку другу\n` +
+      `• Он регистрируется через неё\n` +
+      `• Ты получаешь *+100 PeachPoints*!\n\n` +
+      `🎁 Приглашай друзей и зарабатывай!`,
       { 
         parse_mode: 'Markdown',
         disable_web_page_preview: true 
       }
     );
+    
+    console.log('✅ /ref обработан успешно');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
   } catch (e) {
-    console.error('❌ Ошибка в /ref:', e);
-    await ctx.reply('❌ Произошла ошибка. Попробуйте позже.');
+    console.error('❌ КРИТИЧЕСКАЯ ОШИБКА в /ref:', e.message);
+    console.error('Stack:', e.stack);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    await ctx.reply(
+      `❌ *Произошла ошибка*\n\n` +
+      `Не удалось загрузить реферальные данные.\n` +
+      `Попробуйте позже или обратитесь в поддержку.`,
+      { parse_mode: 'Markdown' }
+    );
   }
 });
 
