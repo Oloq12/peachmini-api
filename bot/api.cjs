@@ -7,8 +7,8 @@ const { HttpsProxyAgent } = require('https-proxy-agent');
 
 const app = express();
 const PORT = process.env.PORT || process.env.API_PORT || 8787;
+const PB_URL = process.env.PB_URL || 'http://127.0.0.1:8090';
 const WEBAPP_ORIGIN = process.env.WEBAPP_ORIGIN || '*';
-const PB_URL = process.env.PB_URL;
 const OPENAI_KEY = process.env.OPENAI_KEY;
 
 if (!PB_URL) console.warn('⚠️ PB_URL not set');

@@ -102,36 +102,44 @@ export default function InspiredTab() {
     const name = window.prompt('Введите имя персонажа:', 'Новый персонаж');
     if (!name) return;
 
-    const slug = name.toLowerCase()
-      .replace(/[^a-zа-яё0-9\s]/gi, '')
-      .replace(/\s+/g, '-')
-      + '-' + Date.now();
-
     setSaving(true);
     try {
-      if (!pb) {
-        throw new Error('PocketBase не настроен');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+      
+      // Создаем персонажа через API
+      const response = await fetch(`${API_URL}/girls`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        },
+        body: JSON.stringify({
+          name,
+          origin: 'INSPIRED',
+          persona: extractedData.systemPrompt || '',
+          bioMemory: extractedData.bioMemory || [],
+          starterPhrases: extractedData.starterPhrases || []
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Ошибка сервера: ${response.status}`);
       }
 
-      const record = await pb.collection('girls').create({
-        name,
-        slug,
-        shortDesc: extractedData.bioMemory?.[0] || 'Создан из примеров',
-        avatar: avatar,
-        origin: 'INSPIRED',
-        persona: extractedData.systemPrompt || '',
-        bioMemory: JSON.stringify(extractedData.bioMemory || []),
-        starterPhrases: JSON.stringify(extractedData.starterPhrases || [])
-      });
+      const data = await response.json();
+      
+      if (!data.ok || !data.slug) {
+        throw new Error('Неверный формат ответа от сервера');
+      }
 
       // Отслеживание создания персонажа
       track('persona_created', { origin: 'INSPIRED' });
 
       toast.success('✨ Персонаж создан! Переходим в чат...');
       
-      // Прямой редирект в чат с новым персонажем
+      // Редирект в чат с новым персонажем (используем slug)
       setTimeout(() => {
-        navigate(`/chats/${record.id}`);
+        navigate(`/chats/${data.id}`, { state: { girlId: data.id } });
       }, 800);
     } catch (error) {
       console.error('Ошибка сохранения:', error);

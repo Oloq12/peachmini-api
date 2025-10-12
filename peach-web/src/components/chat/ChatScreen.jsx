@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from '../Toast';
-import { pb } from '../../services/pb';
+import { pb, sendChatMessage, getCharacterBySlug } from '../../services/pb';
 import UpgradeModal from './UpgradeModal';
 import { track } from '../../utils/analytics';
 import { ChatMessageSkeleton } from '../Skeleton';
@@ -36,12 +36,19 @@ export default function ChatScreen() {
     try {
       setLoading(true);
       
-      if (!pb) {
-        throw new Error('PocketBase не настроен');
-      }
-
-      // Загружаем персонажа
-      const girl = await pb.collection('girls').getOne(girlId);
+      // Загружаем персонажа через API (используем girlId как slug для простоты)
+      const girl = await pb.collection('girls').getOne(girlId).catch(async () => {
+        // Если не найден по ID, попробуем найти по slug
+        const API_URL = import.meta.env.VITE_API_URL || 'https://unrazed-wendell-pseudocentric.ngrok-free.dev';
+        const response = await fetch(`${API_URL}/girls/${girlId}`, {
+          headers: {
+            'ngrok-skip-browser-warning': 'true'
+          }
+        });
+        if (!response.ok) throw new Error('Character not found');
+        const data = await response.json();
+        return data.girl;
+      });
       setCharacter(girl);
 
       // Загружаем историю сообщений (если есть коллекция)
@@ -89,52 +96,13 @@ export default function ChatScreen() {
     setSending(true);
 
     try {
-      // Отправляем запрос к боту
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
-      const response = await fetch(`${API_URL}/chat/reply`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          girlId: character.id,
-          userMsg: userMessage,
-          userId: window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'demo_user',
-          chatHistory: messages.map(m => ({
-            role: m.role,
-            content: m.content
-          }))
-        })
-      });
-
-      if (response.status === 429 || response.status === 402) {
-        // Лимит исчерпан или недостаточно средств
-        const errorData = await response.json().catch(() => ({}));
-        
-        if (response.status === 402 && errorData.error === 'NO_FUNDS') {
-          toast.error(`💎 Недостаточно средств! Требуется: ${errorData.required || 2} PP`, {
-            duration: 4000
-          });
-          if (typeof errorData.balance === 'number') {
-            setUserBalance(errorData.balance);
-          }
-        }
-        
-        setShowUpgradeModal(true);
-        // Удаляем сообщение пользователя
-        setMessages(prev => prev.slice(0, -1));
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error('Ошибка от сервера');
-      }
-
-      const data = await response.json();
+      // Отправляем сообщение через API
+      const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'demo';
+      const result = await sendChatMessage(character.id, userMessage, userId);
       
       // Обновляем баланс если пришел в ответе
-      if (typeof data.balance === 'number') {
-        setUserBalance(data.balance);
+      if (typeof result.balance === 'number') {
+        setUserBalance(result.balance);
       }
 
       // Отслеживание отправки сообщения
@@ -146,7 +114,7 @@ export default function ChatScreen() {
       // Добавляем ответ бота
       const botMessage = {
         role: 'assistant',
-        content: data.reply,
+        content: result.reply,
         timestamp: Date.now()
       };
       setMessages(prev => [...prev, botMessage]);
@@ -172,7 +140,16 @@ export default function ChatScreen() {
       
     } catch (error) {
       console.error('Ошибка отправки сообщения:', error);
-      toast.error('Не удалось отправить сообщение');
+      
+      if (error.message === 'NO_FUNDS') {
+        toast.error('💎 Недостаточно средств! Пополните баланс', {
+          duration: 4000
+        });
+        setShowUpgradeModal(true);
+      } else {
+        toast.error('Не удалось отправить сообщение');
+      }
+      
       // Удаляем сообщение пользователя при ошибке
       setMessages(prev => prev.slice(0, -1));
     } finally {

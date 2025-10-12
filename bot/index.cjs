@@ -556,28 +556,42 @@ bot.start(async (ctx) => {
     
     // Обрабатываем реферал, если есть код
     if (referralCode) {
-      const referralResult = await processReferral(tgId, referralCode);
-      
-      if (referralResult) {
-        // Уведомляем пригласившего
-        try {
-          await ctx.telegram.sendMessage(
-            referralResult.inviter.tgId,
-            `🎉 Ваш друг присоединился к Peachmini!\n\n` +
-            `💰 +${referralResult.bonus} PeachPoints\n` +
-            `👥 Всего рефералов: ${referralResult.inviter.refCount}\n` +
-            `💎 Баланс: ${referralResult.inviter.balance} PP`
-          );
-        } catch (e) {
-          console.log('⚠️ Не удалось уведомить реферрера:', e.message);
-        }
+      try {
+        const API_URL = process.env.API_URL || 'http://localhost:8787';
+        const response = await fetch(`${API_URL}/ref/apply`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tgId: tgId.toString(), code: referralCode })
+        });
         
-        // Уведомляем нового пользователя
-        await ctx.reply(
-          `🎁 Добро пожаловать от друга!\n\n` +
-          `Вы присоединились по приглашению. ` +
-          `Ваш друг получил ${referralResult.bonus} PeachPoints!`
-        );
+        const result = await response.json();
+        
+        if (result.ok) {
+          console.log('✅ Реферал засчитан:', result);
+          
+          // Уведомляем пригласившего
+          try {
+            await ctx.telegram.sendMessage(
+              result.inviterId,
+              `🎉 Ваш друг присоединился к Peachmini!\n\n` +
+              `💰 +${result.bonus} PeachPoints\n` +
+              `Используйте команду /ref для просмотра статистики`
+            );
+          } catch (e) {
+            console.log('⚠️ Не удалось уведомить реферрера:', e.message);
+          }
+          
+          // Уведомляем нового пользователя
+          await ctx.reply(
+            `🎁 Добро пожаловать от друга!\n\n` +
+            `Вы присоединились по приглашению. ` +
+            `Ваш друг получил ${result.bonus} PeachPoints!`
+          );
+        } else {
+          console.log('⚠️ Не удалось применить реферал:', result.error);
+        }
+      } catch (e) {
+        console.error('❌ Ошибка применения реферала:', e);
       }
     }
     
@@ -608,24 +622,26 @@ bot.command('ref', async (ctx) => {
     // Создаем пользователя, если его нет
     await ensureUserInDB(tgId);
     
-    // Получаем статистику
-    const stats = await getReferralStats(tgId);
+    // Получаем статистику через API
+    const API_URL = process.env.API_URL || 'http://localhost:8787';
+    const response = await fetch(`${API_URL}/ref/status?userId=${tgId}`);
+    const data = await response.json();
     
-    if (!stats) {
+    if (!data.ok) {
       await ctx.reply('❌ Не удалось получить статистику. Попробуйте позже.');
       return;
     }
     
     const botUsername = ctx.me.username || 'Amourath_ai_bot';
-    const referralLink = `https://t.me/${botUsername}?start=ref_${stats.code}`;
+    const referralLink = `https://t.me/${botUsername}?start=ref_${data.referralCode}`;
     
     await ctx.reply(
       `🔗 *Ваша реферальная ссылка:*\n\n` +
       `\`${referralLink}\`\n\n` +
       `📊 *Статистика:*\n` +
-      `👥 Рефералов: *${stats.count}*\n` +
-      `💰 Награда: *${stats.bonus} PP*\n` +
-      `💎 Баланс: *${stats.balance} PP*\n\n` +
+      `👥 Рефералов: *${data.stats.count}*\n` +
+      `💰 Награда: *${data.stats.earned} PP*\n` +
+      `💎 Баланс: *${data.stats.balance} PP*\n\n` +
       `💡 За каждого приглашённого друга вы получаете *+100 PeachPoints*!`,
       { 
         parse_mode: 'Markdown',
