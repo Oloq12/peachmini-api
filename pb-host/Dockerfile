@@ -8,14 +8,10 @@ RUN apk add --no-cache wget unzip ca-certificates tzdata \
  && wget -q https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_amd64.zip \
  && unzip pocketbase_${PB_VERSION}_linux_amd64.zip -d /pb \
  && rm pocketbase_${PB_VERSION}_linux_amd64.zip
-# ./
-#  |- pocketbase
-#  |- pb_migrations (можно будет добавить позже)
-#  |- pb_data (будет примонтирован диском)
 
 EXPOSE 8090
 # Railway uses $PORT variable, fallback to 8090 for local
 ENV PORT=8090
-CMD ["/bin/sh", "-c", "/pb/pocketbase serve --http 0.0.0.0:${PORT} --dir /pb/pb_data"]
+CMD ["/pb/pocketbase","serve","--http","0.0.0.0:${PORT}","--dir","/pb/pb_data"]
 # -------------------
 
