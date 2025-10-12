@@ -1,4 +1,4 @@
-require('dotenv').config({ path: '../.env' });
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const PocketBase = require('pocketbase').default;
@@ -6,7 +6,7 @@ const { OpenAI } = require('openai');
 const { HttpsProxyAgent } = require('https-proxy-agent');
 
 const app = express();
-const PORT = process.env.API_PORT || 8787;
+const PORT = process.env.PORT || process.env.API_PORT || 8787;
 const WEBAPP_ORIGIN = process.env.WEBAPP_ORIGIN || '*';
 const PB_URL = process.env.PB_URL;
 const OPENAI_KEY = process.env.OPENAI_KEY;
@@ -30,7 +30,18 @@ const ai = new OpenAI({
 
 app.use(express.json({ limit: '1mb' }));
 app.use(cors({ 
-  origin: WEBAPP_ORIGIN === '*' ? true : WEBAPP_ORIGIN, 
+  origin: [
+    'http://localhost:5173',
+    'https://peach-95wsi4msy-trsoyoleg-4006s-projects.vercel.app',
+    'https://peach-g32i7q531-trsoyoleg-4006s-projects.vercel.app',
+    'https://peach-mrvh76p52-trsoyoleg-4006s-projects.vercel.app',
+    'https://peach-h2cwnvhy4-trsoyoleg-4006s-projects.vercel.app',
+    'https://peach-gvo26eszd-trsoyoleg-4006s-projects.vercel.app',
+    'https://peach-qnr859drq-trsoyoleg-4006s-projects.vercel.app',
+    'https://peach-jweo61ns0-trsoyoleg-4006s-projects.vercel.app',
+    'https://peach-k01ooxkbm-trsoyoleg-4006s-projects.vercel.app',
+    'https://peach-iw1g1rn76-trsoyoleg-4006s-projects.vercel.app'
+  ], 
   credentials: false 
 }));
 
@@ -60,6 +71,7 @@ const hasPII = (s='') => {
 
 // Health check
 app.get('/health', (req, res) => {
+  console.log('[API] /health called');
   res.json({ 
     ok: true, 
     time: Date.now(),
@@ -144,8 +156,9 @@ Keep it warm, empathetic, not explicit. Reply ONLY with valid JSON.`;
     return res.json({ ok: true, ...out });
 
   } catch (e) {
-    console.error('❌ Persona extract error:', e);
-    return res.status(500).json({ ok: false, error: 'EXTRACT_FAIL', message: 'Ошибка извлечения персоны' });
+    console.error('❌ Persona extract error:', e.message);
+    console.error('Stack:', e.stack);
+    return res.status(500).json({ ok: false, error: 'EXTRACT_FAIL', message: 'Ошибка извлечения персоны: ' + e.message });
   }
 });
 
@@ -450,6 +463,87 @@ app.get('/ref/status', async (req, res) => {
   } catch (e) {
     console.error('❌ Referral status error:', e);
     return res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
+  }
+});
+
+// POST /ref/apply - Apply referral code
+app.post('/ref/apply', async (req, res) => {
+  try {
+    const { tgId, code } = req.body;
+    
+    if (!tgId || !code) {
+      return res.status(400).json({ ok: false, error: 'TG_ID_AND_CODE_REQUIRED' });
+    }
+
+    if (!pb) {
+      return res.status(503).json({ ok: false, error: 'PB_NOT_CONFIGURED' });
+    }
+
+    console.log(`📨 Referral apply request: tgId=${tgId}, code=${code}`);
+
+    // Get inviter by referral code
+    const inviter = await pb.collection('users').getFirstListItem(`referralCode="${code}"`).catch(() => null);
+    
+    if (!inviter) {
+      return res.status(404).json({ ok: false, error: 'INVALID_CODE', message: 'Неверный реферальный код' });
+    }
+
+    // Get or create invitee
+    let invitee = await pb.collection('users').getFirstListItem(`tgId="${tgId}"`).catch(() => null);
+    
+    if (!invitee) {
+      // Create new user
+      const newReferralCode = Math.random().toString(36).substring(2, 8);
+      invitee = await pb.collection('users').create({
+        tgId: tgId,
+        balance: 0,
+        plan: 'free',
+        referralCode: newReferralCode,
+        refCount: 0
+      });
+      console.log(`✅ Created new user: ${tgId} with code ${newReferralCode}`);
+    }
+
+    // Check if user is trying to refer themselves
+    if (inviter.id === invitee.id) {
+      return res.status(400).json({ ok: false, error: 'SELF_REFERRAL', message: 'Нельзя пригласить самого себя!' });
+    }
+
+    // Check if referral already exists
+    const existingRef = await pb.collection('referrals').getFirstListItem(
+      `inviterId="${inviter.id}" && inviteeId="${invitee.id}"`
+    ).catch(() => null);
+    
+    if (existingRef) {
+      return res.status(400).json({ ok: false, error: 'ALREADY_REFERRED', message: 'Реферал уже засчитан' });
+    }
+
+    // Create referral record
+    await pb.collection('referrals').create({
+      inviterId: inviter.id,
+      inviteeId: invitee.id,
+      code: code
+    });
+
+    // Update inviter: +1 refCount, +100 PP
+    await pb.collection('users').update(inviter.id, {
+      refCount: (inviter.refCount || 0) + 1,
+      balance: (inviter.balance || 0) + 100
+    });
+
+    console.log(`✅ Referral applied: ${inviter.tgId} -> ${invitee.tgId}, +100 PP`);
+
+    return res.json({
+      ok: true,
+      inviterId: inviter.tgId,
+      inviteeId: invitee.tgId,
+      bonus: 100,
+      message: 'Реферал засчитан! +100 PP для пригласившего'
+    });
+
+  } catch (e) {
+    console.error('❌ Referral apply error:', e);
+    return res.status(500).json({ ok: false, error: 'SERVER_ERROR', message: 'Ошибка применения реферального кода' });
   }
 });
 
@@ -871,6 +965,7 @@ app.post('/girls', async (req, res) => {
 // ═══════════════════════════════════════════════════════════
 
 app.listen(PORT, () => {
+  console.log('[API] listening on', PORT);
   console.log('');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('🚀 Peachmini API Server');
@@ -888,6 +983,7 @@ app.listen(PORT, () => {
   console.log('  POST /chat/reply');
   console.log('  POST /payments/createInvoice');
   console.log('  GET  /ref/status');
+  console.log('  POST /ref/apply');
   console.log('  POST /quests/checkin');
   console.log('  GET  /quests/status');
   console.log('  POST /quests/complete');
