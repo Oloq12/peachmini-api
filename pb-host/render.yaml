@@ -6,10 +6,12 @@ services:
     plan: free
     region: frankfurt
     autoscaling: false
-    disk:
-      name: pbdata
-      mountPath: /pb/pb_data
-      sizeGB: 1
     healthCheckPath: /
+    # NOTE: Persistent disk требует платный план ($7/мес)
+    # Без диска данные будут теряться при каждом редеплое
+    # disk:
+    #   name: pbdata
+    #   mountPath: /pb/pb_data
+    #   sizeGB: 1
 # -------------------
 
