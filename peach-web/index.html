@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <title>peach-web</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    
+    <!-- Ранняя диагностика -->
+    <script>
+      // Видимый индикатор загрузки
+      document.body.style.background = '#0b0b10';
+      document.body.style.color = '#fff';
+      document.body.style.fontFamily = 'system-ui, sans-serif';
+      document.getElementById('root').innerHTML = '<div style="padding:20px;text-align:center;margin-top:50px;">🚀 Загрузка Peachmini...</div>';
+      
+      // Отправка диагностики
+      fetch('/client-log', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          t: 'html_loaded',
+          d: {
+            ua: navigator.userAgent,
+            tg: typeof window.Telegram,
+            time: new Date().toISOString()
+          }
+        })
+      }).catch(e => console.error('Log failed:', e));
+    </script>
+    
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

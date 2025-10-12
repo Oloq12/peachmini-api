@@ -1,0 +1,31 @@
+# Игнорировать при сборке Docker образа
+node_modules
+npm-debug.log
+.env
+.git
+.gitignore
+*.md
+.DS_Store
+
+# Исключаем ненужные папки
+pb_data
+pb_migrations
+peach-web
+vite-project
+webapp
+webapp-design
+deploy-package
+
+# Исключаем HTML файлы
+*.html
+
+# Исключаем временные файлы
+temp.txt
+*.log
+*.exe
+
+# Сохраняем только bot/ и корневые файлы
+!bot/
+!package.json
+!package-lock.json
+
