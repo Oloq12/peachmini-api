@@ -5,6 +5,15 @@ const { OpenAI } = require('openai');
 
 const app = express();
 
+// Middleware to handle /api prefix
+app.use((req, res, next) => {
+  // Remove /api prefix if present
+  if (req.url.startsWith('/api/')) {
+    req.url = req.url.replace('/api', '');
+  }
+  next();
+});
+
 // Mock data
 const mockGirls = [
   {

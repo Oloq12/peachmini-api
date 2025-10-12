@@ -31,6 +31,18 @@
       "dest": "/api/index.js"
     },
     {
+      "src": "/ref/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/quests/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/payments/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "/peach-web/$1"
     }
