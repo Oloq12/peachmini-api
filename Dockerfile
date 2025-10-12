@@ -12,6 +12,6 @@ RUN apk add --no-cache wget unzip ca-certificates tzdata \
 EXPOSE 8090
 # Railway uses $PORT variable, fallback to 8090 for local
 ENV PORT=8090
-CMD ["/pb/pocketbase","serve","--http","0.0.0.0:${PORT}","--dir","/pb/pb_data"]
+CMD ["sh", "-c", "/pb/pocketbase serve --http 0.0.0.0:${PORT} --dir /pb/pb_data"]
 # -------------------
 
