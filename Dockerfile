@@ -1,18 +1,21 @@
+# Dockerfile for Peachmini API on Render
 FROM node:20-alpine
+
 WORKDIR /app
 
-# Копируем package.json из bot папки
-COPY bot/package*.json ./
-RUN npm install --omit=dev
+# Copy package files
+COPY package*.json ./
+COPY bot/package*.json ./bot/
 
-# Копируем весь проект
+# Install dependencies
+RUN npm install --omit=dev
+RUN cd bot && npm install --omit=dev
+
+# Copy application files
 COPY . .
 
-# Устанавливаем PocketBase
-RUN wget -q https://github.com/pocketbase/pocketbase/releases/download/v0.21.3/pocketbase_0.21.3_linux_amd64.zip \
-    && unzip pocketbase_0.21.3_linux_amd64.zip -d /app \
-    && rm pocketbase_0.21.3_linux_amd64.zip \
-    && chmod +x /app/pocketbase
-
+# Expose port (Render provides PORT env var)
 EXPOSE 8787
-CMD ["sh", "-c", "/app/pocketbase serve --http 0.0.0.0:8090 --dir /app/pb_data & cd bot && node api.cjs"]
+
+# Start API server
+CMD ["node", "bot/api.cjs"]

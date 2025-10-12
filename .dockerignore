@@ -1,7 +1,16 @@
 node_modules
 .env
 .git
+.gitignore
+*.md
 pb_data
 peach-web
+vite-project
+webapp
+webapp-design
+test-*.html
+*.html
+.vercel
+.vscode
 *.log
-.DS_Store
+api
