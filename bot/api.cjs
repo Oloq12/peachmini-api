@@ -173,14 +173,40 @@ app.post('/chat/reply', async (req, res) => {
 
     console.log('💬 Chat request for girl:', girlId);
 
-    if (!pb) {
-      return res.status(503).json({ ok: false, error: 'NO_PB', message: 'PocketBase не настроен' });
-    }
+    // Mock data for demo
+    const mockGirls = [
+      {
+        id: '1',
+        name: 'Алиса',
+        persona: 'Ты Алиса - дружелюбная и любознательная девушка 22 лет. Ты любишь читать книги, изучать новые технологии и общаться с интересными людьми. У тебя отличное чувство юмора и ты всегда готова поддержать разговор на любую тему.',
+        bioMemory: ['Любит читать фантастику', 'Изучает программирование', 'Живет в Москве'],
+        starterPhrases: ['Привет! Как дела?', 'Расскажи что-нибудь интересное!', 'Что ты думаешь о новых технологиях?']
+      },
+      {
+        id: '2', 
+        name: 'Мила',
+        persona: 'Ты Мила - творческая художница 24 лет. Ты рисуешь картины, любишь природу и вдохновляешь других своим искусством. У тебя мечтательный характер и ты видишь красоту в самых простых вещах.',
+        bioMemory: ['Пишет маслом', 'Любит закаты', 'Мечтает о выставке'],
+        starterPhrases: ['Хочешь посмотреть мои картины?', 'Какие цвета тебе нравятся?', 'Искусство - это жизнь!']
+      }
+    ];
 
-    // Get girl data
-    const girl = await pb.collection('girls').getOne(girlId).catch(() => null);
+    // Get girl data (try PocketBase first, then mock)
+    let girl = null;
+    if (pb) {
+      try {
+        girl = await pb.collection('girls').getOne(girlId);
+      } catch (e) {
+        console.log('⚠️ PocketBase error, using mock data:', e.message);
+      }
+    }
+    
+    // Fallback to mock data
     if (!girl) {
-      return res.status(404).json({ ok: false, error: 'GIRL_NOT_FOUND', message: 'Персонаж не найден' });
+      girl = mockGirls.find(g => g.id === girlId);
+      if (!girl) {
+        return res.status(404).json({ ok: false, error: 'GIRL_NOT_FOUND', message: 'Персонаж не найден' });
+      }
     }
 
     // Determine model and price
@@ -792,20 +818,49 @@ app.post('/quests/complete', async (req, res) => {
 // GET /girls - список персонажей
 app.get('/girls', async (req, res) => {
   try {
-    if (!pb) {
-      return res.status(503).json({ ok: false, error: 'PB_NOT_CONFIGURED' });
+    // Mock data for demo
+    const mockGirls = [
+      {
+        id: '1',
+        name: 'Алиса',
+        slug: 'alisa',
+        avatarUrl: 'https://i.pravatar.cc/300?img=1',
+        shortDesc: 'Дружелюбная и любознательная девушка, всегда готовая поддержать разговор...',
+        persona: 'Ты Алиса - дружелюбная и любознательная девушка 22 лет...',
+        bioMemory: ['Любит читать фантастику', 'Изучает программирование', 'Живет в Москве'],
+        starterPhrases: ['Привет! Как дела?', 'Расскажи что-нибудь интересное!', 'Что ты думаешь о новых технологиях?']
+      },
+      {
+        id: '2',
+        name: 'Мила',
+        slug: 'mila', 
+        avatarUrl: 'https://i.pravatar.cc/300?img=2',
+        shortDesc: 'Творческая и вдохновляющая художница, которая видит красоту во всем...',
+        persona: 'Ты Мила - творческая художница 24 лет...',
+        bioMemory: ['Пишет маслом', 'Любит закаты', 'Мечтает о выставке'],
+        starterPhrases: ['Хочешь посмотреть мои картины?', 'Какие цвета тебе нравятся?', 'Искусство - это жизнь!']
+      }
+    ];
+
+    // Try PocketBase first, fallback to mock
+    if (pb) {
+      try {
+        const list = await pb.collection('girls').getFullList({ sort: '-created' });
+        const mapped = list.map(g => ({
+          id: g.id,
+          name: g.name,
+          slug: g.slug,
+          avatarUrl: g.avatar ? pb.files.getUrl(g, g.avatar) : null,
+          shortDesc: (g.persona || '').replace(/\s+/g, ' ').slice(0, 120)
+        }));
+        return res.json({ ok: true, girls: mapped });
+      } catch (e) {
+        console.log('⚠️ PocketBase error, using mock data:', e.message);
+      }
     }
-
-    const list = await pb.collection('girls').getFullList({ sort: '-created' });
-    const mapped = list.map(g => ({
-      id: g.id,
-      name: g.name,
-      slug: g.slug,
-      avatarUrl: g.avatar ? pb.files.getUrl(g, g.avatar) : null,
-      shortDesc: (g.persona || '').replace(/\s+/g, ' ').slice(0, 120)
-    }));
-
-    res.json(mapped);
+    
+    // Fallback to mock data
+    res.json({ ok: true, girls: mockGirls });
   } catch (e) {
     console.error('❌ Get girls error:', e);
     res.status(500).json({ ok: false, error: String(e) });
