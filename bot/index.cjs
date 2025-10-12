@@ -1,7 +1,7 @@
 // bot/index.cjs
 // ──────────────────────────────────────────────────────────
 // 1. Подключаем .env и библиотеки
-require('dotenv').config({ path: '../.env' });          // читает BOT_TOKEN и, при желании, PB_URL
+require('dotenv').config();          // читает BOT_TOKEN из корневого .env
 const { Telegraf, Markup } = require('telegraf');
 
 // 2. Проверяем, что токен есть

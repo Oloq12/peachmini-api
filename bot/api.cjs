@@ -398,7 +398,7 @@ app.post('/payments/createInvoice', async (req, res) => {
   }
 });
 
-// 4) REFERRALS - Get referral status
+// 4) REFERRALS - Get referral status (создает пользователя если нет)
 app.get('/ref/status', async (req, res) => {
   try {
     const { userId } = req.query;
@@ -411,11 +411,24 @@ app.get('/ref/status', async (req, res) => {
       return res.status(503).json({ ok: false, error: 'PB_NOT_CONFIGURED' });
     }
 
-    // Get user
-    const user = await pb.collection('users').getFirstListItem(`tgId="${userId}"`).catch(() => null);
+    // Get or create user
+    let user = await pb.collection('users').getFirstListItem(`tgId="${userId}"`).catch(() => null);
     
     if (!user) {
-      return res.status(404).json({ ok: false, error: 'USER_NOT_FOUND' });
+      // Create new user with referral code
+      const referralCode = Math.random().toString(36).substring(2, 8);
+      console.log(`📝 Creating new user: ${userId} with code ${referralCode}`);
+      
+      user = await pb.collection('users').create({
+        tgId: userId.toString(),
+        balance: 0,
+        refCount: 0,
+        earned: 0,
+        referralCode: referralCode,
+        plan: 'free'
+      });
+      
+      console.log(`✅ User created: ${user.id}`);
     }
 
     // Get referrals (last 10)
@@ -430,18 +443,15 @@ app.get('/ref/status', async (req, res) => {
       date: ref.created
     }));
 
-    const totalBonus = (user.refCount || 0) * 100;
-
     return res.json({
       ok: true,
-      referralCode: user.referralCode || '',
-      referralLink: `https://t.me/Amourath_ai_bot?start=ref_${user.referralCode}`,
-      stats: {
-        count: user.refCount || 0,
-        earned: totalBonus,
-        balance: user.balance || 0
-      },
-      referrals: referralsList
+      data: {
+        referralCode: user.referralCode || '',
+        refCount: user.refCount || 0,
+        earned: user.earned || 0,
+        referralLink: `https://t.me/Amourath_ai_bot?start=ref_${user.referralCode}`,
+        referrals: referralsList
+      }
     });
 
   } catch (e) {
@@ -493,36 +503,67 @@ app.post('/ref/apply', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'SELF_REFERRAL', message: 'Нельзя пригласить самого себя!' });
     }
 
-    // Check if referral already exists
+    // Check if referral already exists (идемпотентность)
     const existingRef = await pb.collection('referrals').getFirstListItem(
       `inviterId="${inviter.id}" && inviteeId="${invitee.id}"`
     ).catch(() => null);
     
     if (existingRef) {
-      return res.status(400).json({ ok: false, error: 'ALREADY_REFERRED', message: 'Реферал уже засчитан' });
+      console.log(`⚠️ Referral already exists: ${inviter.tgId} -> ${invitee.tgId}`);
+      return res.json({ 
+        ok: true, 
+        data: {
+          credited: false, 
+          alreadyApplied: true,
+          message: 'Реферал уже был засчитан ранее'
+        }
+      });
     }
 
     // Create referral record
-    await pb.collection('referrals').create({
-      inviterId: inviter.id,
-      inviteeId: invitee.id,
-      code: code
-    });
+    try {
+      await pb.collection('referrals').create({
+        inviterId: inviter.id,
+        inviteeId: invitee.id,
+        code: code
+      });
+      console.log(`✅ Referral record created`);
+    } catch (e) {
+      console.error(`❌ Failed to create referral record:`, e.message);
+      // Если не удалось создать - возможно уже существует (race condition)
+      return res.json({ 
+        ok: true, 
+        data: {
+          credited: false, 
+          alreadyApplied: true,
+          message: 'Реферал уже был засчитан'
+        }
+      });
+    }
 
-    // Update inviter: +1 refCount, +100 PP
+    // Update inviter: +1 refCount, +100 PP to balance and earned
+    const newRefCount = (inviter.refCount || 0) + 1;
+    const newBalance = (inviter.balance || 0) + 100;
+    const newEarned = (inviter.earned || 0) + 100;
+    
     await pb.collection('users').update(inviter.id, {
-      refCount: (inviter.refCount || 0) + 1,
-      balance: (inviter.balance || 0) + 100
+      refCount: newRefCount,
+      balance: newBalance,
+      earned: newEarned
     });
 
-    console.log(`✅ Referral applied: ${inviter.tgId} -> ${invitee.tgId}, +100 PP`);
+    console.log(`✅ Referral applied: ${inviter.tgId} -> ${invitee.tgId}, +100 PP (earned: ${newEarned}, balance: ${newBalance})`);
 
     return res.json({
       ok: true,
-      inviterId: inviter.tgId,
-      inviteeId: invitee.tgId,
-      bonus: 100,
-      message: 'Реферал засчитан! +100 PP для пригласившего'
+      data: {
+        credited: true,
+        inviterId: inviter.tgId,
+        inviteeId: invitee.tgId,
+        bonus: 100,
+        newBalance: newBalance,
+        totalEarned: newEarned
+      }
     });
 
   } catch (e) {
