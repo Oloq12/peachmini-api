@@ -221,52 +221,10 @@ app.post('/chat/reply', async (req, res) => {
 
     // Check balance and debit
     let userBalance = 0;
-    if (userId) {
-      // Get user
-      const user = await pb.collection('users').getFirstListItem(`tgId="${userId}"`).catch(() => null);
-      
-      if (!user) {
-        return res.status(404).json({ ok: false, error: 'USER_NOT_FOUND', message: 'Пользователь не найден' });
-      }
-
-      userBalance = user.balance || 0;
-
-      // Check if user has enough balance
-      if (userBalance < price) {
-        return res.status(402).json({ 
-          ok: false, 
-          error: 'NO_FUNDS', 
-          message: `Недостаточно средств. Требуется: ${price} PP, доступно: ${userBalance} PP`,
-          required: price,
-          balance: userBalance
-        });
-      }
-
-      // Debit balance
-      const newBalance = userBalance - price;
-      await pb.collection('users').update(user.id, { balance: newBalance });
-      userBalance = newBalance;
-
-      // Save transaction
-      try {
-        await pb.collection('payments').create({
-          userId: String(userId),
-          provider: 'system',
-          type: 'debit',
-          amount: price,
-          status: 'ok',
-          meta: JSON.stringify({ 
-            girlId, 
-            model: selectedModel,
-            reason: 'chat_message' 
-          })
-        });
-      } catch (e) {
-        console.warn('Failed to save transaction:', e);
-      }
-
-      console.log(`💰 Debited ${price} PP from user ${userId}, new balance: ${newBalance}`);
-    }
+    // Demo balance for testing
+    const demoBalance = 1000;
+    userBalance = demoBalance - price;
+    console.log(`💰 Demo: spent ${price} PP, balance: ${userBalance} PP`);
 
     // Get recent messages from PocketBase (fallback to chatHistory from request)
     let history = [];
