@@ -17,6 +17,13 @@ migrate((app) => {
   ];
   app.save(paymentsCollection);
 
+  // Добавляем уникальный индекс для girls.slug
+  const girlsCollection = app.findCollectionByNameOrId("pbc_929686065");
+  girlsCollection.indexes = [
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_girls_slug ON girls (slug)"
+  ];
+  app.save(girlsCollection);
+
   return;
 }, (app) => {
   // Удаляем индексы при откате
@@ -27,6 +34,10 @@ migrate((app) => {
   const paymentsCollection = app.findCollectionByNameOrId("pbc_payments");
   paymentsCollection.indexes = [];
   app.save(paymentsCollection);
+
+  const girlsCollection = app.findCollectionByNameOrId("pbc_929686065");
+  girlsCollection.indexes = [];
+  app.save(girlsCollection);
 
   return;
 })

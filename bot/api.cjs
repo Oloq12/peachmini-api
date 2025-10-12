@@ -854,10 +854,10 @@ app.get('/girls', async (req, res) => {
   }
 });
 
-// GET /girls/:slug - детали персонажа
-app.get('/girls/:slug', async (req, res) => {
+// GET /girls/:slugOrId - детали персонажа (по slug или id)
+app.get('/girls/:slugOrId', async (req, res) => {
   try {
-    const { slug } = req.params;
+    const { slugOrId } = req.params;
     
     // Mock data with full details
     const mockGirlsDetailed = {
@@ -920,33 +920,47 @@ app.get('/girls/:slug', async (req, res) => {
     // Try PocketBase first
     if (pb) {
       try {
-        const g = await pb.collection('girls').getFirstListItem(`slug="${slug}"`);
-        return res.json({
-          ok: true,
-          data: {
-            id: g.id, 
-            name: g.name, 
-            slug: g.slug,
-            avatarUrl: g.avatar ? pb.files.getUrl(g, g.avatar) : null,
-            persona: g.persona, 
-            bioMemory: g.bioMemory || [], 
-            starterPhrases: g.starterPhrases || []
+        // Try to find by slug first
+        let girl = null;
+        try {
+          girl = await pb.collection('girls').getFirstListItem(`slug="${slugOrId}"`);
+        } catch (e) {
+          // If not found by slug, try by id
+          try {
+            girl = await pb.collection('girls').getOne(slugOrId);
+          } catch (e2) {
+            console.log('⚠️ Not found by slug or id:', slugOrId);
           }
-        });
+        }
+        
+        if (girl) {
+          return res.json({
+            ok: true,
+            data: {
+              id: girl.id, 
+              name: girl.name, 
+              slug: girl.slug,
+              avatarUrl: girl.avatar ? pb.files.getUrl(girl, girl.avatar) : null,
+              persona: girl.persona, 
+              bioMemory: girl.bioMemory || [], 
+              starterPhrases: girl.starterPhrases || []
+            }
+          });
+        }
       } catch (e) {
-        console.log('⚠️ PocketBase error for slug, trying mock:', e.message);
+        console.log('⚠️ PocketBase error, trying mock:', e.message);
       }
     }
     
     // Fallback to mock data
-    const mockGirl = mockGirlsDetailed[slug];
+    const mockGirl = mockGirlsDetailed[slugOrId];
     if (mockGirl) {
       return res.json({ ok: true, data: mockGirl });
     }
     
     res.status(404).json({ ok: false, error: 'NOT_FOUND' });
   } catch (e) {
-    console.error('❌ Get girl by slug error:', e);
+    console.error('❌ Get girl by slug/id error:', e);
     res.status(404).json({ ok: false, error: 'NOT_FOUND' });
   }
 });
@@ -1002,8 +1016,25 @@ app.get('/chats', async (req, res) => {
 app.post('/girls', express.json(), async (req, res) => {
   try {
     const { name = 'Персона', origin = 'INSPIRED', persona = '', bioMemory = [], starterPhrases = [] } = req.body || {};
-    const slug = (name || 'persona').toLowerCase().replace(/[^a-zа-яё0-9]+/g, '-') + '-' + Date.now();
-    const rec = await pb.collection('girls').create({ name, origin, persona, bioMemory, starterPhrases, slug });
+    
+    // Generate unique slug: kebab-case + short random ID
+    const randomId = Math.random().toString(36).substring(2, 8);
+    const slug = (name || 'persona')
+      .toLowerCase()
+      .replace(/[^a-zа-яё0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') // trim dashes
+      + '-' + randomId;
+    
+    const rec = await pb.collection('girls').create({ 
+      name, 
+      origin, 
+      persona, 
+      bioMemory, 
+      starterPhrases, 
+      slug 
+    });
+    
+    console.log(`✅ Created girl: ${rec.name} (${rec.slug})`);
     res.json({ ok: true, data: { id: rec.id, slug: rec.slug } });
   } catch (e) {
     console.error('❌ Create girl error:', e);
