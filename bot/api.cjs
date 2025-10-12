@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const PocketBase = require('pocketbase').default;
+const PocketBase = require('pocketbase/cjs');
 const { OpenAI } = require('openai');
 const { HttpsProxyAgent } = require('https-proxy-agent');
 
@@ -15,7 +15,7 @@ if (!PB_URL) console.warn('⚠️ PB_URL not set');
 if (!OPENAI_KEY) console.warn('⚠️ OPENAI_KEY not set');
 
 // PocketBase setup
-const pb = PB_URL ? new PocketBase(PB_URL) : null;
+const pb = new PocketBase(process.env.PB_URL);
 
 // OpenAI setup with proxy
 const proxyAgent = new HttpsProxyAgent(
@@ -796,75 +796,38 @@ app.get('/girls', async (req, res) => {
       return res.status(503).json({ ok: false, error: 'PB_NOT_CONFIGURED' });
     }
 
-    const girls = await pb.collection('girls').getList(1, 50, {
-      sort: '-created'
-    });
-
-    const result = girls.items.map(g => ({
+    const list = await pb.collection('girls').getFullList({ sort: '-created' });
+    const mapped = list.map(g => ({
       id: g.id,
       name: g.name,
       slug: g.slug,
-      avatarUrl: g.avatar || '',
-      shortDesc: (g.persona || '').slice(0, 120) + (g.persona?.length > 120 ? '...' : '')
+      avatarUrl: g.avatar ? pb.files.getUrl(g, g.avatar) : null,
+      shortDesc: (g.persona || '').replace(/\s+/g, ' ').slice(0, 120)
     }));
 
-    return res.json({ ok: true, girls: result });
+    res.json(mapped);
   } catch (e) {
     console.error('❌ Get girls error:', e);
-    return res.status(500).json({ ok: false, error: 'FETCH_FAIL' });
+    res.status(500).json({ ok: false, error: String(e) });
   }
 });
 
 // GET /girls/:slug - детали персонажа
 app.get('/girls/:slug', async (req, res) => {
   try {
-    const { slug } = req.params;
-
-    if (!pb) {
-      return res.status(503).json({ ok: false, error: 'PB_NOT_CONFIGURED' });
-    }
-
-    const girl = await pb.collection('girls').getFirstListItem(`slug="${slug}"`).catch(() => null);
-
-    if (!girl) {
-      return res.status(404).json({ ok: false, error: 'GIRL_NOT_FOUND' });
-    }
-
-    // Parse JSON fields
-    let bioMemory = [];
-    let starterPhrases = [];
-
-    try {
-      bioMemory = typeof girl.bioMemory === 'string' 
-        ? JSON.parse(girl.bioMemory) 
-        : (girl.bioMemory || []);
-    } catch (e) {
-      console.warn('Failed to parse bioMemory:', e);
-    }
-
-    try {
-      starterPhrases = typeof girl.starterPhrases === 'string' 
-        ? JSON.parse(girl.starterPhrases) 
-        : (girl.starterPhrases || []);
-    } catch (e) {
-      console.warn('Failed to parse starterPhrases:', e);
-    }
-
-    return res.json({
-      ok: true,
-      girl: {
-        id: girl.id,
-        name: girl.name,
-        slug: girl.slug,
-        avatarUrl: girl.avatar || '',
-        persona: girl.persona || '',
-        bioMemory,
-        starterPhrases
-      }
+    const g = await pb.collection('girls').getFirstListItem(`slug="${req.params.slug}"`);
+    res.json({
+      id: g.id, 
+      name: g.name, 
+      slug: g.slug,
+      avatarUrl: g.avatar ? pb.files.getUrl(g, g.avatar) : null,
+      persona: g.persona, 
+      bioMemory: g.bioMemory || [], 
+      starterPhrases: g.starterPhrases || []
     });
   } catch (e) {
     console.error('❌ Get girl by slug error:', e);
-    return res.status(500).json({ ok: false, error: 'FETCH_FAIL' });
+    res.status(404).json({ ok: false, error: 'NOT_FOUND' });
   }
 });
 
@@ -916,47 +879,15 @@ app.get('/chats', async (req, res) => {
 });
 
 // POST /girls - создание нового персонажа
-app.post('/girls', async (req, res) => {
+app.post('/girls', express.json(), async (req, res) => {
   try {
-    const { name, origin, persona, bioMemory, starterPhrases } = req.body || {};
-
-    if (!name || !persona) {
-      return res.status(400).json({ ok: false, error: 'NAME_AND_PERSONA_REQUIRED' });
-    }
-
-    if (!pb) {
-      return res.status(503).json({ ok: false, error: 'PB_NOT_CONFIGURED' });
-    }
-
-    // Generate slug
-    const slug = name.toLowerCase()
-      .replace(/[^a-zа-яё0-9\s]/gi, '')
-      .replace(/\s+/g, '-')
-      + '-' + Date.now();
-
-    const record = await pb.collection('girls').create({
-      name,
-      slug,
-      shortDesc: Array.isArray(bioMemory) && bioMemory[0] 
-        ? bioMemory[0].slice(0, 120) 
-        : persona.slice(0, 120),
-      avatar: 'https://i.pravatar.cc/300?img=' + Math.floor(Math.random() * 70),
-      origin: origin || 'CUSTOM',
-      persona,
-      bioMemory: JSON.stringify(bioMemory || []),
-      starterPhrases: JSON.stringify(starterPhrases || [])
-    });
-
-    console.log(`✅ Created girl: ${name} (${slug})`);
-
-    return res.json({
-      ok: true,
-      id: record.id,
-      slug: record.slug
-    });
+    const { name = 'Персона', origin = 'INSPIRED', persona = '', bioMemory = [], starterPhrases = [] } = req.body || {};
+    const slug = (name || 'persona').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + require('crypto').randomUUID().slice(0, 6);
+    const rec = await pb.collection('girls').create({ name, origin, persona, bioMemory, starterPhrases, slug });
+    res.json({ ok: true, id: rec.id, slug: rec.slug });
   } catch (e) {
     console.error('❌ Create girl error:', e);
-    return res.status(500).json({ ok: false, error: 'CREATE_FAIL' });
+    res.status(400).json({ ok: false, error: String(e) });
   }
 });
 
