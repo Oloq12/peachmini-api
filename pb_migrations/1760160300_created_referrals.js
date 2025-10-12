@@ -81,10 +81,11 @@ migrate((app) => {
       }
     ],
     "indexes": [
-      "CREATE INDEX idx_ref_code ON referrals (code)"
+      "CREATE INDEX idx_ref_code ON referrals (code)",
+      "CREATE UNIQUE INDEX idx_ref_pair ON referrals (inviterId, inviteeId)"
     ],
-    "listRule": null,
-    "viewRule": null,
+    "listRule": "",
+    "viewRule": "",
     "createRule": "",
     "updateRule": null,
     "deleteRule": null,
