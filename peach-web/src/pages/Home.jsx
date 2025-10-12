@@ -14,14 +14,18 @@ export default function Home() {
 
   async function loadCharacters() {
     try {
+      console.log('🔵 Home: Начинаем загрузку персонажей...');
       setLoading(true);
       const data = await getCharacters();
+      console.log('🟢 Home: Получено персонажей:', data.length);
+      console.log('📊 Home: Данные:', data);
       setCharacters(data);
     } catch (error) {
-      console.error('Ошибка загрузки персонажей:', error);
+      console.error('🔴 Home: Ошибка загрузки персонажей:', error);
       toast.error('Не удалось загрузить персонажей');
     } finally {
       setLoading(false);
+      console.log('✅ Home: Загрузка завершена');
     }
   }
 
