@@ -166,7 +166,11 @@ app.get('/health', (req, res) => {
     ok: true,
     time: Date.now(),
     pb: true, // Mock data available
-    ai: !!ai
+    ai: !!ai,
+    env: {
+      hasOpenAIKey: !!process.env.OPENAI_KEY,
+      keyPrefix: process.env.OPENAI_KEY?.slice(0, 10)
+    }
   });
 });
 
@@ -257,7 +261,7 @@ app.post('/chat/reply', async (req, res) => {
 
   } catch (e) {
     console.error('❌ Chat error:', e);
-    return res.status(500).json({ ok: false, error: 'CHAT_FAIL' });
+    return res.status(500).json({ ok: false, error: 'CHAT_FAIL', details: e.message });
   }
 });
 
