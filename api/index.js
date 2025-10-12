@@ -5,6 +5,10 @@ const { OpenAI } = require('openai');
 
 const app = express();
 
+// Middleware
+app.use(express.json());
+app.use(cors({ origin: '*' }));
+
 // Middleware to handle /api prefix
 app.use((req, res, next) => {
   // Remove /api prefix if present
@@ -348,5 +352,9 @@ ${samples.map((s, i) => `${i + 1}. ${s}`).join('\n')}
   }
 });
 
-// Export for Vercel
-module.exports = app;
+// Export for Vercel Serverless Functions
+// Vercel requires exporting the handler function, not the Express app
+module.exports = (req, res) => {
+  // Let Express handle the request
+  app(req, res);
+};
