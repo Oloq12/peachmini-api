@@ -898,7 +898,7 @@ app.get('/chats', async (req, res) => {
 app.post('/girls', express.json(), async (req, res) => {
   try {
     const { name = 'Персона', origin = 'INSPIRED', persona = '', bioMemory = [], starterPhrases = [] } = req.body || {};
-    const slug = (name || 'persona').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + require('crypto').randomUUID().slice(0, 6);
+    const slug = (name || 'persona').toLowerCase().replace(/[^a-zа-яё0-9]+/g, '-') + '-' + Date.now();
     const rec = await pb.collection('girls').create({ name, origin, persona, bioMemory, starterPhrases, slug });
     res.json({ ok: true, data: { id: rec.id, slug: rec.slug } });
   } catch (e) {
