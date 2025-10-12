@@ -13,6 +13,15 @@
       }
     }
   ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Frame-Options", "value": "" },
+        { "key": "Content-Security-Policy", "value": "frame-ancestors https://web.telegram.org https://*.telegram.org https://t.me https://*.t.me;" }
+      ]
+    }
+  ],
   "routes": [
     {
       "src": "/api/(.*)",
