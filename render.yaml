@@ -1,19 +1,25 @@
 services:
   - type: web
     name: peachmini-api
-    env: node
+    env: docker
     region: frankfurt
     plan: free
-    buildCommand: cd bot && npm install
-    startCommand: cd bot && node api.cjs
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeploy: true
+    healthCheckPath: /api/health
     envVars:
-      - key: NODE_VERSION
-        value: 20
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8787
+      - key: PB_URL
+        sync: false
       - key: OPENAI_KEY
         sync: false
       - key: BOT_TOKEN
         sync: false
-      - key: PB_URL
-        value: http://127.0.0.1:8090
-      - key: API_PORT
-        value: 8787
+      - key: WEBAPP_URL
+        sync: false
+      - key: WEBAPP_ORIGIN
+        sync: false
