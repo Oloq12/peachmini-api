@@ -22,38 +22,38 @@
       ]
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/index.js"
+      "source": "/api/(.*)",
+      "destination": "/api/index.js"
     },
     {
-      "src": "/health",
-      "dest": "/api/index.js"
+      "source": "/health",
+      "destination": "/api/index.js"
     },
     {
-      "src": "/girls(.*)",
-      "dest": "/api/index.js"
+      "source": "/girls(.*)",
+      "destination": "/api/index.js"
     },
     {
-      "src": "/chat/(.*)",
-      "dest": "/api/index.js"
+      "source": "/chat/(.*)",
+      "destination": "/api/index.js"
     },
     {
-      "src": "/ref/(.*)",
-      "dest": "/api/index.js"
+      "source": "/ref/(.*)",
+      "destination": "/api/index.js"
     },
     {
-      "src": "/quests/(.*)",
-      "dest": "/api/index.js"
+      "source": "/quests/(.*)",
+      "destination": "/api/index.js"
     },
     {
-      "src": "/payments/(.*)",
-      "dest": "/api/index.js"
+      "source": "/payments/(.*)",
+      "destination": "/api/index.js"
     },
     {
-      "src": "/(.*)",
-      "dest": "/peach-web/$1"
+      "source": "/(.*)",
+      "destination": "/peach-web/$1"
     }
   ]
 }
