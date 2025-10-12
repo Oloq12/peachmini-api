@@ -40,23 +40,43 @@
       "destination": "/api/index.js"
     },
     {
-      "source": "/girls(.*)",
+      "source": "/girls",
       "destination": "/api/index.js"
     },
     {
-      "source": "/chat/(.*)",
+      "source": "/girls/(.*)",
       "destination": "/api/index.js"
     },
     {
-      "source": "/ref/(.*)",
+      "source": "/chat/reply",
       "destination": "/api/index.js"
     },
     {
-      "source": "/quests/(.*)",
+      "source": "/ref/status",
       "destination": "/api/index.js"
     },
     {
-      "source": "/payments/(.*)",
+      "source": "/ref/apply",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/quests/checkin",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/quests/status",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/quests/complete",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/payments/createInvoice",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/chats",
       "destination": "/api/index.js"
     },
     {

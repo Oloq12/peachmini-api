@@ -811,14 +811,14 @@ app.get('/girls', async (req, res) => {
           avatarUrl: g.avatar ? pb.files.getUrl(g, g.avatar) : null,
           shortDesc: (g.persona || '').replace(/\s+/g, ' ').slice(0, 120)
         }));
-        return res.json({ ok: true, girls: mapped });
+        return res.json({ ok: true, data: { girls: mapped } });
       } catch (e) {
         console.log('⚠️ PocketBase error, using mock data:', e.message);
       }
     }
     
     // Fallback to mock data
-    res.json({ ok: true, girls: mockGirls });
+    res.json({ ok: true, data: { girls: mockGirls } });
   } catch (e) {
     console.error('❌ Get girls error:', e);
     res.status(500).json({ ok: false, error: String(e) });
@@ -830,13 +830,16 @@ app.get('/girls/:slug', async (req, res) => {
   try {
     const g = await pb.collection('girls').getFirstListItem(`slug="${req.params.slug}"`);
     res.json({
-      id: g.id, 
-      name: g.name, 
-      slug: g.slug,
-      avatarUrl: g.avatar ? pb.files.getUrl(g, g.avatar) : null,
-      persona: g.persona, 
-      bioMemory: g.bioMemory || [], 
-      starterPhrases: g.starterPhrases || []
+      ok: true,
+      data: {
+        id: g.id, 
+        name: g.name, 
+        slug: g.slug,
+        avatarUrl: g.avatar ? pb.files.getUrl(g, g.avatar) : null,
+        persona: g.persona, 
+        bioMemory: g.bioMemory || [], 
+        starterPhrases: g.starterPhrases || []
+      }
     });
   } catch (e) {
     console.error('❌ Get girl by slug error:', e);
@@ -884,7 +887,7 @@ app.get('/chats', async (req, res) => {
       lastMessage: chatsByGirl[girlId][0]
     }));
 
-    return res.json({ ok: true, chats });
+    return res.json({ ok: true, data: { chats } });
   } catch (e) {
     console.error('❌ Get chats error:', e);
     return res.status(500).json({ ok: false, error: 'FETCH_FAIL' });
@@ -897,7 +900,7 @@ app.post('/girls', express.json(), async (req, res) => {
     const { name = 'Персона', origin = 'INSPIRED', persona = '', bioMemory = [], starterPhrases = [] } = req.body || {};
     const slug = (name || 'persona').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + require('crypto').randomUUID().slice(0, 6);
     const rec = await pb.collection('girls').create({ name, origin, persona, bioMemory, starterPhrases, slug });
-    res.json({ ok: true, id: rec.id, slug: rec.slug });
+    res.json({ ok: true, data: { id: rec.id, slug: rec.slug } });
   } catch (e) {
     console.error('❌ Create girl error:', e);
     res.status(400).json({ ok: false, error: String(e) });
