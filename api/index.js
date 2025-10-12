@@ -151,6 +151,8 @@ try {
   if (OPENAI_KEY) {
     ai = new OpenAI({
       apiKey: OPENAI_KEY,
+      timeout: 30000, // 30 seconds
+      maxRetries: 3,
       httpAgent: process.env.HTTPS_PROXY ? new (require('https-proxy-agent'))(process.env.HTTPS_PROXY) : undefined
     });
     console.log('✅ OpenAI connected');
