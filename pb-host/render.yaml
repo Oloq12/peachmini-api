@@ -1,0 +1,15 @@
+# --- render.yaml ---
+services:
+  - type: web
+    name: peachmini-pb
+    env: docker
+    plan: free
+    region: frankfurt
+    autoscaling: false
+    disk:
+      name: pbdata
+      mountPath: /pb/pb_data
+      sizeGB: 1
+    healthCheckPath: /
+# -------------------
+
