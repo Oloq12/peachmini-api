@@ -665,7 +665,7 @@ app.post('/quests/checkin', async (req, res) => {
   }
 });
 
-// GET /quests/status - Get quests status
+// GET /quests/status - Get quests status (создает пользователя если нет)
 app.get('/quests/status', async (req, res) => {
   try {
     const { tgId } = req.query;
@@ -678,55 +678,56 @@ app.get('/quests/status', async (req, res) => {
       return res.status(503).json({ ok: false, error: 'PB_NOT_CONFIGURED' });
     }
 
-    // Get user
-    const user = await pb.collection('users').getFirstListItem(`tgId="${tgId}"`).catch(() => null);
+    // Get or create user
+    let user = await pb.collection('users').getFirstListItem(`tgId="${tgId}"`).catch(() => null);
     
     if (!user) {
-      return res.status(404).json({ ok: false, error: 'USER_NOT_FOUND' });
+      // Create new user
+      const referralCode = Math.random().toString(36).substring(2, 8);
+      console.log(`📝 Creating new user for quests: ${tgId} with code ${referralCode}`);
+      
+      user = await pb.collection('users').create({
+        tgId: tgId.toString(),
+        balance: 0,
+        refCount: 0,
+        earned: 0,
+        referralCode: referralCode,
+        plan: 'free',
+        streak: 0
+      });
+      
+      console.log(`✅ User created for quests: ${user.id}`);
     }
 
-    // Get all quests
-    const allQuests = await pb.collection('quests').getFullList().catch(() => []);
+    // Базовые квесты (простой список без PB)
+    const baseQuests = [
+      { key: 'open_webapp', title: 'Зайти в WebApp', done: false },
+      { key: 'create_persona', title: 'Создать персонажа', done: false },
+      { key: 'start_chat', title: 'Начать чат', done: false }
+    ];
 
-    // Get user's completed quests
-    const userQuests = await pb.collection('user_quests').getFullList({
-      filter: `userId="${user.id}"`,
-      expand: 'questId'
-    }).catch(() => []);
-
-    const completedCodes = new Set(
-      userQuests
-        .filter(uq => uq.status === 'done')
-        .map(uq => uq.expand?.questId?.code)
-        .filter(Boolean)
-    );
-
-    // Check if can check in today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    let lastCheckin = null;
-    if (user.lastCheckin) {
-      lastCheckin = new Date(user.lastCheckin);
-      lastCheckin.setHours(0, 0, 0, 0);
-    }
-    const canCheckinToday = !lastCheckin || lastCheckin.getTime() < today.getTime();
+    // Get user's completed quests from completedQuests field
+    const completedQuests = user.completedQuests || [];
+    const completedKeys = new Set(completedQuests);
 
     // Build quest list
-    const quests = allQuests.map(q => ({
-      code: q.code,
+    const tasks = baseQuests.map(q => ({
+      key: q.key,
       title: q.title,
-      reward: q.reward,
-      status: completedCodes.has(q.code) ? 'done' : 
-              (q.code === 'daily_checkin' && !canCheckinToday) ? 'done' : 'pending',
-      canClaim: q.code === 'daily_checkin' ? canCheckinToday : !completedCodes.has(q.code)
+      done: completedKeys.has(q.key)
     }));
+
+    const doneCount = tasks.filter(t => t.done).length;
 
     return res.json({
       ok: true,
-      streak: user.streak || 0,
-      lastCheckin: user.lastCheckin || null,
-      canCheckinToday,
-      quests
+      data: {
+        tasks,
+        totals: {
+          done: doneCount,
+          all: tasks.length
+        }
+      }
     });
 
   } catch (e) {
@@ -735,73 +736,69 @@ app.get('/quests/status', async (req, res) => {
   }
 });
 
-// POST /quests/complete - Complete a quest
+// POST /quests/complete - Complete a quest (идемпотентно)
 app.post('/quests/complete', async (req, res) => {
   try {
-    const { tgId, code } = req.body;
+    const { tgId, key } = req.body;
     
-    if (!tgId || !code) {
-      return res.status(400).json({ ok: false, error: 'TG_ID_AND_CODE_REQUIRED' });
+    if (!tgId || !key) {
+      return res.status(400).json({ ok: false, error: 'TG_ID_AND_KEY_REQUIRED' });
     }
 
     if (!pb) {
       return res.status(503).json({ ok: false, error: 'PB_NOT_CONFIGURED' });
     }
 
-    // Don't allow completing daily_checkin through this endpoint
-    if (code === 'daily_checkin') {
-      return res.status(400).json({ ok: false, error: 'USE_CHECKIN_ENDPOINT' });
-    }
+    console.log(`🎯 Quest complete request: tgId=${tgId}, key=${key}`);
 
-    // Get user
-    const user = await pb.collection('users').getFirstListItem(`tgId="${tgId}"`).catch(() => null);
+    // Get or create user
+    let user = await pb.collection('users').getFirstListItem(`tgId="${tgId}"`).catch(() => null);
     
     if (!user) {
-      return res.status(404).json({ ok: false, error: 'USER_NOT_FOUND' });
+      const referralCode = Math.random().toString(36).substring(2, 8);
+      user = await pb.collection('users').create({
+        tgId: tgId.toString(),
+        balance: 0,
+        refCount: 0,
+        earned: 0,
+        referralCode: referralCode,
+        plan: 'free',
+        streak: 0
+      });
+      console.log(`✅ User auto-created for quest: ${user.id}`);
     }
 
-    // Get quest
-    const quest = await pb.collection('quests').getFirstListItem(`code="${code}"`).catch(() => null);
+    // Проверяем выполненные квесты из completedQuests
+    const completedQuests = user.completedQuests || [];
     
-    if (!quest) {
-      return res.status(404).json({ ok: false, error: 'QUEST_NOT_FOUND' });
-    }
-
-    // Check if already completed
-    const existing = await pb.collection('user_quests').getFirstListItem(
-      `userId="${user.id}" && questId="${quest.id}"`
-    ).catch(() => null);
-
-    if (existing && existing.status === 'done') {
+    // Если уже выполнен - идемпотентность
+    if (completedQuests.includes(key)) {
+      console.log(`⚠️ Quest ${key} already completed for user ${tgId}`);
       return res.json({ 
-        ok: true, 
-        alreadyCompleted: true,
-        message: 'Квест уже выполнен!'
+        ok: true,
+        data: {
+          alreadyCompleted: true,
+          message: 'Квест уже выполнен'
+        }
       });
     }
 
-    // Complete quest
-    if (existing) {
-      await pb.collection('user_quests').update(existing.id, { status: 'done' });
-    } else {
-      await pb.collection('user_quests').create({
-        userId: user.id,
-        questId: quest.id,
-        status: 'done'
-      });
-    }
-
-    // Give reward
+    // Добавляем квест в список выполненных
+    const updatedCompleted = [...completedQuests, key];
+    
     await pb.collection('users').update(user.id, {
-      balance: (user.balance || 0) + quest.reward
+      completedQuests: updatedCompleted
     });
+    
+    console.log(`✅ Quest ${key} marked as done for user ${tgId}`);
 
-    return res.json({
+    return res.json({ 
       ok: true,
-      alreadyCompleted: false,
-      reward: quest.reward,
-      newBalance: (user.balance || 0) + quest.reward,
-      message: `Квест выполнен! +${quest.reward} PeachPoints`
+      data: {
+        completed: true,
+        key: key,
+        message: 'Квест выполнен!'
+      }
     });
 
   } catch (e) {
