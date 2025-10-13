@@ -471,7 +471,7 @@ app.get('/girls/:slug', async (req, res) => {
 });
 
 // Chat endpoint
-app.post('/chat/reply', async (req, res) => {
+app.post('/api/chat/reply', async (req, res) => {
   try {
     console.log('💬 /chat endpoint called');
     console.log('💬 Request body:', JSON.stringify(req.body, null, 2));
