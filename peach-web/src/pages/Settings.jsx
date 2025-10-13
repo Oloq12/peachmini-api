@@ -3,12 +3,24 @@ import { useNavigate } from 'react-router-dom';
 export default function Settings() {
   const navigate = useNavigate();
 
+  const handleResetOnboarding = () => {
+    localStorage.removeItem('onboarding_done');
+    alert('Onboarding сброшен! Обновите страницу для повторного прохождения.');
+  };
+
   const menuItems = [
     {
       icon: '🍑',
       title: 'Landing',
       description: 'О Peachmini',
       path: '/landing'
+    },
+    {
+      icon: '🎯',
+      title: 'Сбросить Onboarding',
+      description: 'Повторно показать введение',
+      path: null,
+      action: handleResetOnboarding
     },
     {
       icon: '🔗',
@@ -57,8 +69,14 @@ export default function Settings() {
         {menuItems.map((item, index) => (
           <button
             key={index}
-            onClick={() => item.path && navigate(item.path)}
-            disabled={!item.path}
+            onClick={() => {
+              if (item.path) {
+                navigate(item.path);
+              } else if (item.action) {
+                item.action();
+              }
+            }}
+            disabled={!item.path && !item.action}
             style={{
               background: 'linear-gradient(135deg, #1a1a24 0%, #252535 100%)',
               border: '1px solid rgba(147, 51, 234, 0.3)',
@@ -67,18 +85,18 @@ export default function Settings() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              cursor: item.path ? 'pointer' : 'default',
+              cursor: (item.path || item.action) ? 'pointer' : 'default',
               transition: 'all 0.3s ease',
-              opacity: item.path ? 1 : 0.6
+              opacity: (item.path || item.action) ? 1 : 0.6
             }}
             onMouseEnter={(e) => {
-              if (item.path) {
+              if (item.path || item.action) {
                 e.currentTarget.style.transform = 'translateY(-2px)';
                 e.currentTarget.style.borderColor = 'rgba(147, 51, 234, 0.6)';
               }
             }}
             onMouseLeave={(e) => {
-              if (item.path) {
+              if (item.path || item.action) {
                 e.currentTarget.style.transform = 'translateY(0)';
                 e.currentTarget.style.borderColor = 'rgba(147, 51, 234, 0.3)';
               }
@@ -123,7 +141,7 @@ export default function Settings() {
                 {item.badge}
               </div>
             )}
-            {item.path && (
+            {(item.path || item.action) && (
               <div style={{ color: '#9ca3af', fontSize: '1.5rem' }}>›</div>
             )}
           </button>

@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import BottomNav from './components/BottomNav';
+import Onboarding from './components/Onboarding';
 import Home from './pages/Home';
 import Chats from './pages/Chats';
 import Create from './pages/Create';
@@ -20,6 +21,7 @@ export default function App() {
         background: '#0b0b10',
         color: '#fff'
       }}>
+        <Onboarding />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/chats" element={<Chats />} />
