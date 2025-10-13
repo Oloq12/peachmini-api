@@ -277,22 +277,49 @@ app.post('/chat/reply', (req, res) => {
   console.log('💬 /chat endpoint called');
   console.log('💬 Request body:', req.body);
   
-  try {
-    res.json({
-      ok: true,
-      data: {
-        reply: 'Привет! Я Алиса. Как дела?',
-        balance: 1000
-      }
-    });
-  } catch (e) {
-    console.error('❌ Chat error:', e);
-    res.status(500).json({ 
+  const { girlId, userMsg, userId = 'demo' } = req.body || {};
+  
+  // Simple validation
+  if (!girlId || !userMsg) {
+    return res.status(400).json({ 
       ok: false, 
-      error: 'An error occurred while processing your message. Please try again.',
-      code: 'CHAT_FAIL' 
+      error: 'girlId and userMsg are required',
+      code: 'MISSING_FIELDS' 
     });
   }
+
+  // Get character data
+  const girl = mockGirls.find(g => g.id === girlId);
+  if (!girl) {
+    return res.status(404).json({ 
+      ok: false, 
+      error: 'Character not found',
+      code: 'CHARACTER_NOT_FOUND' 
+    });
+  }
+
+  // Fallback response (OpenAI blocked in region)
+  const replies = [
+    `Привет! Я ${girl.name}. Как дела?`,
+    `О, привет! Я ${girl.name}. Что расскажешь?`,
+    `Здравствуй! Я ${girl.name}. Как настроение?`,
+    `Привет-привет! Я ${girl.name}. Что нового?`
+  ];
+  
+  const reply = replies[Math.floor(Math.random() * replies.length)];
+
+  console.log(`✅ /chat: OK, reply=${reply.slice(0, 40)}...`);
+
+  // Track chat message event
+  console.log(`📊 [analytics] chat_message: user=${userId}, girl=${girlId}, msg_length=${userMsg.length}`);
+
+  res.json({
+    ok: true,
+    data: {
+      reply,
+      balance: 1000
+    }
+  });
 });
 
 // Alternative chat endpoint
