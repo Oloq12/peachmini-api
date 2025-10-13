@@ -473,59 +473,21 @@ app.get('/girls/:slug', async (req, res) => {
 // Chat endpoint
 app.post('/chat/reply', async (req, res) => {
   try {
+    console.log('💬 /chat endpoint called');
+    console.log('💬 Request body:', JSON.stringify(req.body, null, 2));
+    
     const { girlId, userMsg, userId = 'demo' } = req.body || {};
     
     console.log(`💬 /chat: user=${userId}, girl=${girlId}, msg="${userMsg?.slice(0, 30)}..."`);
     
-    // Валидация
-    if (!userId || typeof userId !== 'string') {
+    // Simple validation
+    if (!girlId || !userMsg) {
       return res.status(400).json({ 
         ok: false, 
-        error: 'User ID is required',
-        code: 'MISSING_USER_ID' 
+        error: 'girlId and userMsg are required',
+        code: 'MISSING_FIELDS' 
       });
     }
-    
-    // Rate limiting: 10 req/min per tgId
-    const rateCheck = checkRateLimit(userId);
-    if (!rateCheck.allowed) {
-      console.log(`⏱️ /chat: rate limit exceeded for ${userId}, retry after ${rateCheck.retryAfter}s`);
-      return res.status(429).json({
-        ok: false,
-        error: `Too many requests. Please wait ${rateCheck.retryAfter} seconds.`,
-        code: 'RATE_LIMIT_EXCEEDED',
-        retryAfter: rateCheck.retryAfter
-      });
-    }
-    
-    console.log(`✅ /chat: rate limit OK (${rateCheck.remaining} remaining)`);
-    
-    if (!girlId || typeof girlId !== 'string') {
-      return res.status(400).json({ 
-        ok: false, 
-        error: 'Character ID is required',
-        code: 'MISSING_CHARACTER_ID' 
-      });
-    }
-    
-    if (!userMsg || typeof userMsg !== 'string' || userMsg.trim().length === 0) {
-      return res.status(400).json({ 
-        ok: false, 
-        error: 'Message cannot be empty',
-        code: 'EMPTY_MESSAGE' 
-      });
-    }
-
-    if (!ai) {
-      console.error('❌ AI not initialized');
-      return res.status(503).json({ 
-        ok: false, 
-        error: 'AI service is temporarily unavailable. Please try again later.',
-        code: 'AI_NOT_CONFIGURED' 
-      });
-    }
-    
-    console.log(`🤖 AI initialized:`, !!ai);
 
     // Get character data
     const girl = mockGirls.find(g => g.id === girlId);
@@ -537,53 +499,16 @@ app.post('/chat/reply', async (req, res) => {
       });
     }
 
-    // Demo balance
-    const balance = 1000;
-
-    // Build conversation
-    const conversation = [
-      { role: 'system', content: girl.persona }
-    ];
-
-    // Add current message
-    conversation.push({ role: 'user', content: userMsg });
-
-    // Generate response with 30s timeout
-    console.log(`🤖 OpenAI request: model=gpt-3.5-turbo, messages=${conversation.length}`);
-    
-    let reply;
-    try {
-      const completion = await Promise.race([
-        ai.chat.completions.create({
-          model: 'gpt-3.5-turbo',
-          messages: conversation,
-          max_tokens: 300,
-          temperature: 0.8
-        }),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 30000)
-        )
-      ]);
-
-      console.log(`🤖 OpenAI response:`, JSON.stringify(completion, null, 2));
-      
-      reply = completion.choices[0]?.message?.content || 'Извините, не могу ответить сейчас.';
-    } catch (openaiError) {
-      console.error('❌ OpenAI API error:', openaiError);
-      // Fallback response
-      reply = `Привет! Я ${girl.name}. Как дела?`;
-    }
+    // Simple fallback response for now
+    const reply = `Привет! Я ${girl.name}. Как дела?`;
 
     console.log(`✅ /chat: OK, reply=${reply.slice(0, 40)}...`);
-
-    // Track chat message event
-    console.log(`📊 [analytics] chat_message: user=${userId}, girl=${girlId}, msg_length=${userMsg.length}`);
 
     return res.json({
       ok: true,
       data: {
         reply,
-        balance: balance - 2 // Demo: deduct 2 PP
+        balance: 1000
       }
     });
 
@@ -592,20 +517,8 @@ app.post('/chat/reply', async (req, res) => {
     console.error('❌ Error details:', {
       message: e.message,
       stack: e.stack,
-      name: e.name,
-      userId,
-      girlId,
-      userMsg: userMsg?.slice(0, 50)
+      name: e.name
     });
-    
-    if (e.message === 'Request timeout') {
-      console.log(`⏱️ /chat: timeout for ${userId}`);
-      return res.status(504).json({ 
-        ok: false, 
-        error: 'Сервер думает слишком долго. Попробуйте ещё раз.',
-        code: 'TIMEOUT' 
-      });
-    }
     
     return res.status(500).json({ 
       ok: false, 
