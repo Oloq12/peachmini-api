@@ -606,3 +606,4 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
+// Force Vercel redeploy Mon Oct 13 23:19:39 MSK 2025
