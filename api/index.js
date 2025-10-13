@@ -272,6 +272,28 @@ if (BOT_TOKEN) {
   console.log('⚠️ BOT_TOKEN not set - payments will use dev mode');
 }
 
+// Chat endpoint - moved to top
+app.post('/chat/reply', (req, res) => {
+  console.log('💬 /chat endpoint called');
+  
+  try {
+    res.json({
+      ok: true,
+      data: {
+        reply: 'Привет! Я Алиса. Как дела?',
+        balance: 1000
+      }
+    });
+  } catch (e) {
+    console.error('❌ Chat error:', e);
+    res.status(500).json({ 
+      ok: false, 
+      error: 'An error occurred while processing your message. Please try again.',
+      code: 'CHAT_FAIL' 
+    });
+  }
+});
+
 // Health check
 app.get('/health', (req, res) => {
   const now = Date.now();
@@ -477,27 +499,6 @@ app.post('/api/test', (req, res) => {
   res.json({ ok: true, message: 'Test endpoint works' });
 });
 
-// Chat endpoint
-app.post('/chat/reply', (req, res) => {
-  console.log('💬 /chat endpoint called');
-  
-  try {
-    res.json({
-      ok: true,
-      data: {
-        reply: 'Привет! Я Алиса. Как дела?',
-        balance: 1000
-      }
-    });
-  } catch (e) {
-    console.error('❌ Chat error:', e);
-    res.status(500).json({ 
-      ok: false, 
-      error: 'An error occurred while processing your message. Please try again.',
-      code: 'CHAT_FAIL' 
-    });
-  }
-});
 
 // Helper: Check rate limit (10 req/min per tgId)
 function checkRateLimit(tgId) {
