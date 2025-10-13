@@ -294,6 +294,18 @@ app.post('/chat/reply', (req, res) => {
   }
 });
 
+// Alternative chat endpoint
+app.post('/chat/test', (req, res) => {
+  console.log('💬 /chat/test endpoint called');
+  res.json({
+    ok: true,
+    data: {
+      reply: 'Test chat endpoint works!',
+      balance: 1000
+    }
+  });
+});
+
 // Health check
 app.get('/health', (req, res) => {
   const now = Date.now();
