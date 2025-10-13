@@ -517,12 +517,15 @@ app.post('/chat/reply', async (req, res) => {
     }
 
     if (!ai) {
+      console.error('❌ AI not initialized');
       return res.status(503).json({ 
         ok: false, 
         error: 'AI service is temporarily unavailable. Please try again later.',
         code: 'AI_NOT_CONFIGURED' 
       });
     }
+    
+    console.log(`🤖 AI initialized:`, !!ai);
 
     // Get character data
     const girl = mockGirls.find(g => g.id === girlId);
@@ -548,21 +551,28 @@ app.post('/chat/reply', async (req, res) => {
     // Generate response with 30s timeout
     console.log(`🤖 OpenAI request: model=gpt-3.5-turbo, messages=${conversation.length}`);
     
-    const completion = await Promise.race([
-      ai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: conversation,
-        max_tokens: 300,
-        temperature: 0.8
-      }),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), 30000)
-      )
-    ]);
+    let reply;
+    try {
+      const completion = await Promise.race([
+        ai.chat.completions.create({
+          model: 'gpt-3.5-turbo',
+          messages: conversation,
+          max_tokens: 300,
+          temperature: 0.8
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 30000)
+        )
+      ]);
 
-    console.log(`🤖 OpenAI response:`, JSON.stringify(completion, null, 2));
-    
-    const reply = completion.choices[0]?.message?.content || 'Извините, не могу ответить сейчас.';
+      console.log(`🤖 OpenAI response:`, JSON.stringify(completion, null, 2));
+      
+      reply = completion.choices[0]?.message?.content || 'Извините, не могу ответить сейчас.';
+    } catch (openaiError) {
+      console.error('❌ OpenAI API error:', openaiError);
+      // Fallback response
+      reply = `Привет! Я ${girl.name}. Как дела?`;
+    }
 
     console.log(`✅ /chat: OK, reply=${reply.slice(0, 40)}...`);
 
