@@ -113,6 +113,9 @@ export default function ChatScreen() {
         messageLength: userMessage.length
       });
 
+      // Complete quest for sending a chat message
+      questActions.onChatMessageSent();
+
       // Добавляем ответ бота
       const botMessage = {
         role: 'assistant',

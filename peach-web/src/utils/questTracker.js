@@ -31,17 +31,20 @@ export async function completeQuest(key, showToast = true) {
       const reward = result.data.reward || 0;
       
       // Show toast notification
-      if (showToast && window.toast) {
-        window.toast.success(`+${reward} 💎`, {
-          duration: 3000,
-          style: {
-            background: '#10b981',
-            color: '#fff',
-            fontWeight: 'bold',
-            fontSize: '1.2rem',
-            borderRadius: '12px',
-            padding: '12px 20px'
-          }
+      if (showToast) {
+        // Import toast dynamically to avoid circular dependencies
+        import('react-hot-toast').then(({ default: toast }) => {
+          toast.success(`+${reward} 💎`, {
+            duration: 3000,
+            style: {
+              background: '#10b981',
+              color: '#fff',
+              fontWeight: 'bold',
+              fontSize: '1.2rem',
+              borderRadius: '12px',
+              padding: '12px 20px'
+            }
+          });
         });
       }
       
@@ -109,6 +112,9 @@ export const questActions = {
   
   // Called when user starts a chat
   onChatStarted: () => completeQuest(QUEST_KEYS.START_CHAT, true),
+  
+  // Called when user sends a chat message
+  onChatMessageSent: () => completeQuest(QUEST_KEYS.START_CHAT, true),
   
   // Called when user gets a reply
   onReplyReceived: () => completeQuest(QUEST_KEYS.GET_REPLY, true),

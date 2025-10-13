@@ -88,6 +88,13 @@ const baseQuests = [
     description: 'Отправь первое сообщение персонажу',
     reward: 30,
     icon: '💬'
+  },
+  {
+    key: 'daily_login',
+    title: 'Ежедневный вход',
+    description: 'Заходи в приложение каждый день',
+    reward: 20,
+    icon: '☀️'
   }
 ];
 
@@ -607,6 +614,7 @@ function getOrCreateUser(tgId) {
       earned: 0,
       balance: 1000, // Starting balance
       completedQuests: [],
+      lastDailyLogin: null, // Added for daily quest
       referredBy: null,
       createdAt: Date.now()
     };
@@ -952,19 +960,29 @@ app.get('/quests/status', (req, res) => {
     const user = getOrCreateUser(tgId);
     
     // Build tasks with completion status
-    const tasks = baseQuests.map(quest => ({
-      key: quest.key,
-      title: quest.title,
-      description: quest.description,
-      reward: quest.reward,
-      icon: quest.icon,
-      done: user.completedQuests.includes(quest.key)
-    }));
+    const tasks = baseQuests.map(quest => {
+      let done = user.completedQuests.includes(quest.key);
+      
+      // Special handling for daily_login quest
+      if (quest.key === 'daily_login') {
+        const today = new Date().toDateString();
+        done = user.lastDailyLogin === today;
+      }
+      
+      return {
+        key: quest.key,
+        title: quest.title,
+        description: quest.description,
+        reward: quest.reward,
+        icon: quest.icon,
+        done
+      };
+    });
     
-    const completedCount = user.completedQuests.length;
-    const totalRewards = baseQuests
-      .filter(q => user.completedQuests.includes(q.key))
-      .reduce((sum, q) => sum + q.reward, 0);
+    const completedCount = tasks.filter(t => t.done).length;
+    const totalRewards = tasks
+      .filter(t => t.done)
+      .reduce((sum, t) => sum + t.reward, 0);
     
     return res.json({
       ok: true,
@@ -1013,6 +1031,23 @@ app.post('/quests/complete', (req, res) => {
     // Get or create user
     const user = getOrCreateUser(tgId);
     
+    // Special handling for daily_login quest
+    if (key === 'daily_login') {
+      const today = new Date().toDateString();
+      if (user.lastDailyLogin === today) {
+        console.log(`ℹ️ Daily login already completed today: ${tgId}`);
+        return res.json({
+          ok: true,
+          data: {
+            done: true,
+            alreadyCompleted: true,
+            reward: 0,
+            balance: user.balance
+          }
+        });
+      }
+    }
+    
     // Check if already completed (idempotent)
     if (user.completedQuests.includes(key)) {
       console.log(`ℹ️ Quest already completed: ${tgId} -> ${key}`);
@@ -1030,6 +1065,11 @@ app.post('/quests/complete', (req, res) => {
     // Mark as completed and credit reward to balance
     user.completedQuests.push(key);
     user.balance = (user.balance || 1000) + quest.reward;
+    
+    // Special handling for daily_login quest
+    if (key === 'daily_login') {
+      user.lastDailyLogin = new Date().toDateString();
+    }
     
     console.log(`✅ /quests/complete: ${tgId}/${key} +${quest.reward}PP → balance=${user.balance}`);
     
