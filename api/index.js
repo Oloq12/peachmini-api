@@ -11,9 +11,11 @@ app.use(cors({ origin: '*' }));
 
 // Middleware to handle /api prefix
 app.use((req, res, next) => {
+  console.log(`🔍 Middleware: ${req.method} ${req.url}`);
   // Remove /api prefix if present
   if (req.url.startsWith('/api/')) {
     req.url = req.url.replace('/api', '');
+    console.log(`🔍 Middleware: URL changed to ${req.url}`);
   }
   next();
 });
