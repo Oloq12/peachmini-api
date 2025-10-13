@@ -4,10 +4,10 @@
   "description": "Peachmini API for Vercel",
   "main": "index.js",
   "dependencies": {
-    "express": "^4.18.2",
+    "axios": "^1.12.2",
     "cors": "^2.8.5",
-    "pocketbase": "^0.21.3",
-    "openai": "^4.28.0",
-    "https-proxy-agent": "^7.0.2"
+    "express": "^4.18.2",
+    "https-proxy-agent": "^7.0.2",
+    "pocketbase": "^0.21.3"
   }
 }

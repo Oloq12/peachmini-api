@@ -293,7 +293,7 @@ if (BOT_TOKEN) {
 }
 
 // Chat endpoint - moved to top
-app.post('/chat/reply', (req, res) => {
+app.post('/chat/reply', async (req, res) => {
   console.log('💬 /chat endpoint called');
   console.log('💬 Request body:', req.body);
   

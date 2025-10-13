@@ -14,6 +14,7 @@
     "doctor:smoke": "bash scripts/smoke.sh",
     "doctor:smoke2": "bash scripts/smoke-v2.sh",
     "doctor:smoke-v2": "bash scripts/smoke-v2.sh",
+    "doctor:smoke:final": "bash scripts/smoke-final.sh",
     "doctor:payments": "bash scripts/smoke-payments.sh",
     "doctor:auto": "bash scripts/auto-heal.sh check",
     "doctor:monitor": "bash scripts/auto-heal.sh monitor",
