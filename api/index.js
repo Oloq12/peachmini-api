@@ -280,11 +280,19 @@ app.post('/chat/reply', (req, res) => {
   const { girlId, userMsg, userId = 'demo' } = req.body || {};
   
   // Simple validation
-  if (!girlId || !userMsg) {
+  if (!girlId) {
     return res.status(400).json({ 
       ok: false, 
-      error: 'girlId and userMsg are required',
-      code: 'MISSING_FIELDS' 
+      error: 'Character ID is required',
+      code: 'MISSING_CHARACTER_ID' 
+    });
+  }
+  
+  if (!userMsg) {
+    return res.status(400).json({ 
+      ok: false, 
+      error: 'Message is required',
+      code: 'MISSING_MESSAGE' 
     });
   }
 
