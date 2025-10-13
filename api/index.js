@@ -201,7 +201,7 @@ app.get('/api/health', (req, res) => {
     ok: true,
     data: {
       time: now,
-      version: '1.0.0',
+      version: '2.0.0',
       ai: !!DEEPSEEK_KEY,
       aiProvider: AI_PROVIDER,
       aiModel: AI_MODEL
