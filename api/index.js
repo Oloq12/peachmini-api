@@ -546,11 +546,11 @@ app.post('/chat/reply', async (req, res) => {
     conversation.push({ role: 'user', content: userMsg });
 
     // Generate response with 30s timeout
-    console.log(`🤖 OpenAI request: model=gpt-4o-mini, messages=${conversation.length}`);
+    console.log(`🤖 OpenAI request: model=gpt-3.5-turbo, messages=${conversation.length}`);
     
     const completion = await Promise.race([
       ai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'gpt-3.5-turbo',
         messages: conversation,
         max_tokens: 300,
         temperature: 0.8
