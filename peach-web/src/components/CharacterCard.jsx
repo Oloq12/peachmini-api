@@ -27,9 +27,9 @@ export default function CharacterCard({ character, isCTA = false }) {
         }}
         onMouseOver={(e) => {
           e.currentTarget.style.transform = 'translateY(-8px) scale(1.02)';
-          e.currentTarget.style.boxShadow = '0 20px 60px rgba(156, 39, 176, 0.4)';
-          e.currentTarget.style.borderColor = 'rgba(156, 39, 176, 0.6)';
-          e.currentTarget.style.background = 'linear-gradient(135deg, rgba(156, 39, 176, 0.25), rgba(33, 150, 243, 0.25))';
+          e.currentTarget.style.boxShadow = '0 20px 60px rgba(255, 134, 200, 0.4)';
+          e.currentTarget.style.borderColor = 'rgba(255, 134, 200, 0.6)';
+          e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 134, 200, 0.25), rgba(26, 28, 46, 0.25))';
         }}
         onMouseOut={(e) => {
           e.currentTarget.style.transform = 'translateY(0) scale(1)';
@@ -91,8 +91,8 @@ export default function CharacterCard({ character, isCTA = false }) {
       }}
       onMouseOver={(e) => {
         e.currentTarget.style.transform = 'translateY(-8px) scale(1.02)';
-        e.currentTarget.style.boxShadow = '0 16px 48px rgba(156, 39, 176, 0.4)';
-        e.currentTarget.style.borderColor = 'rgba(156, 39, 176, 0.5)';
+        e.currentTarget.style.boxShadow = '0 16px 48px rgba(255, 134, 200, 0.4)';
+        e.currentTarget.style.borderColor = 'rgba(255, 134, 200, 0.5)';
       }}
       onMouseOut={(e) => {
         e.currentTarget.style.transform = 'translateY(0) scale(1)';

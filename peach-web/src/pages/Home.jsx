@@ -58,8 +58,8 @@ export default function Home() {
       position: 'relative',
       minHeight: '100vh',
       paddingBottom: '120px',
-      // Нео-градиент фон
-      background: 'linear-gradient(135deg, #9c27b0 0%, #673ab7 50%, #2196f3 100%)',
+      // Новый градиент фон
+      background: 'linear-gradient(135deg, #1a1c2e 0%, #ff86c8 100%)',
       backgroundSize: '200% 200%',
       animation: 'gradientShift 15s ease infinite'
     }}>
@@ -67,12 +67,14 @@ export default function Home() {
         position="top-center"
         toastOptions={{
           style: {
-            background: 'rgba(26, 26, 31, 0.95)',
-            backdropFilter: 'blur(10px)',
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(20px)',
             color: '#fff',
-            borderRadius: '16px',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)'
+            borderRadius: '20px',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+            fontSize: '14px',
+            fontWeight: '500'
           }
         }}
       />

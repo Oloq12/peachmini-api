@@ -18,6 +18,59 @@ import { track } from './utils/analytics';
 
 export default function App() {
   useEffect(() => {
+    // Add CSS animations
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      
+      @keyframes pulse {
+        0%, 100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: scale(1.05);
+          opacity: 0.8;
+        }
+      }
+      
+      @keyframes typingDot {
+        0%, 60%, 100% {
+          transform: translateY(0);
+          opacity: 0.4;
+        }
+        30% {
+          transform: translateY(-10px);
+          opacity: 1;
+        }
+      }
+      
+      @keyframes float {
+        0%, 100% {
+          transform: translateY(0px);
+        }
+        50% {
+          transform: translateY(-10px);
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    
     // Track app open
     track('open_app', {
       platform: window.Telegram?.WebApp?.platform || 'web',

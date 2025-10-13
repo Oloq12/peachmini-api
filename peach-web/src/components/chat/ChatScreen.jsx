@@ -243,13 +243,16 @@ export default function ChatScreen() {
       display: 'flex',
       flexDirection: 'column',
       height: '100vh',
-      background: '#0b0b10'
+      background: 'linear-gradient(135deg, #1a1c2e 0%, #ff86c8 100%)',
+      backgroundSize: '200% 200%',
+      animation: 'gradientShift 15s ease infinite'
     }}>
       {/* Header */}
       <div style={{
         padding: '16px 20px',
-        background: '#1a1a1f',
-        borderBottom: '1px solid #2a2a2f',
+        background: 'rgba(255, 255, 255, 0.1)',
+        backdropFilter: 'blur(20px)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
         display: 'flex',
         alignItems: 'center',
         gap: '12px'
@@ -337,18 +340,24 @@ export default function ChatScreen() {
             style={{
               display: 'flex',
               justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-              marginBottom: '12px'
+              marginBottom: '12px',
+              animation: 'fadeInUp 0.5s ease-out',
+              animationDelay: `${idx * 0.1}s`,
+              animationFillMode: 'both'
             }}
           >
             <div style={{
               maxWidth: '75%',
               padding: '12px 16px',
-              borderRadius: '16px',
+              borderRadius: '20px',
               background: msg.role === 'user' 
-                ? 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)'
-                : '#1a1a1f',
+                ? 'rgba(255, 134, 200, 0.2)'
+                : 'rgba(255, 255, 255, 0.1)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
               color: '#fff',
-              wordWrap: 'break-word'
+              wordWrap: 'break-word',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
             }}>
               <p style={{ margin: 0, fontSize: '0.95rem' }}>
                 {msg.content}
@@ -392,8 +401,9 @@ export default function ChatScreen() {
         left: 0,
         right: 0,
         padding: '12px 20px',
-        background: '#0b0b10',
-        borderTop: '1px solid #2a2a2f'
+        background: 'rgba(255, 255, 255, 0.1)',
+        backdropFilter: 'blur(20px)',
+        borderTop: '1px solid rgba(255, 255, 255, 0.1)'
       }}>
         <div style={{
           display: 'flex',
@@ -411,12 +421,14 @@ export default function ChatScreen() {
             style={{
               flex: 1,
               padding: '12px 16px',
-              background: '#1a1a1f',
-              border: '1px solid #2a2a2f',
-              borderRadius: '12px',
+              background: 'rgba(255, 255, 255, 0.1)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '20px',
               color: '#fff',
               fontSize: '0.95rem',
-              outline: 'none'
+              outline: 'none',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
             }}
           />
           <button
@@ -425,19 +437,78 @@ export default function ChatScreen() {
             style={{
               padding: '12px 20px',
               background: inputText.trim() && !sending
-                ? 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)'
-                : '#2a2a2f',
+                ? 'rgba(255, 134, 200, 0.3)'
+                : 'rgba(255, 255, 255, 0.1)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
               color: '#fff',
-              border: 'none',
-              borderRadius: '12px',
+              borderRadius: '20px',
               fontSize: '1.2rem',
               cursor: inputText.trim() && !sending ? 'pointer' : 'not-allowed',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.3s ease',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+              animation: inputText.trim() && !sending ? 'pulse 2s infinite' : 'none'
             }}
           >
             {sending ? '⏳' : '➤'}
           </button>
         </div>
+        
+        {/* Typing indicator */}
+        {sending && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'flex-start',
+            marginTop: '8px',
+            animation: 'fadeInUp 0.3s ease-out'
+          }}>
+            <div style={{
+              padding: '12px 16px',
+              borderRadius: '20px',
+              background: 'rgba(255, 255, 255, 0.1)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#fff',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                <span style={{ fontSize: '0.9rem', marginRight: '8px' }}>
+                  {character.name} печатает
+                </span>
+                <div style={{
+                  display: 'flex',
+                  gap: '2px'
+                }}>
+                  <div style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: '#fff',
+                    animation: 'typingDot 1.4s infinite ease-in-out'
+                  }}></div>
+                  <div style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: '#fff',
+                    animation: 'typingDot 1.4s infinite ease-in-out 0.2s'
+                  }}></div>
+                  <div style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: '#fff',
+                    animation: 'typingDot 1.4s infinite ease-in-out 0.4s'
+                  }}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Upgrade Modal */}

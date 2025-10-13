@@ -2,27 +2,29 @@ import { toast as hotToast } from 'react-hot-toast';
 
 const TOAST_STYLES = {
   base: {
-    borderRadius: '12px',
-    padding: '16px',
+    borderRadius: '20px',
+    padding: '16px 20px',
     fontSize: '14px',
     fontWeight: '500',
     maxWidth: '420px',
-    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)'
+    backdropFilter: 'blur(20px)',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
   },
   success: {
-    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    background: 'rgba(16, 185, 129, 0.2)',
     color: '#fff'
   },
   error: {
-    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+    background: 'rgba(239, 68, 68, 0.2)',
     color: '#fff'
   },
   info: {
-    background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+    background: 'rgba(255, 134, 200, 0.2)',
     color: '#fff'
   },
   warning: {
-    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+    background: 'rgba(245, 158, 11, 0.2)',
     color: '#fff'
   }
 };

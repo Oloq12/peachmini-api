@@ -1,15 +1,17 @@
-# Analytics Events - Sample Payloads
+# 📊 Analytics Events - Sample Payloads
 
-## Frontend Events
+## Frontend Events (PostHog)
 
 ### 1. open_app
 ```json
 {
   "event": "open_app",
   "properties": {
-    "platform": "telegram",
-    "version": "7.0",
-    "timestamp": 1703123456789
+    "platform": "ios",
+    "version": "6.0",
+    "timestamp": 1760385000000,
+    "$lib": "posthog-js",
+    "$lib_version": "1.275.1"
   }
 }
 ```
@@ -20,7 +22,9 @@
   "event": "onboarding_complete",
   "properties": {
     "steps_completed": 3,
-    "timestamp": 1703123456789
+    "timestamp": 1760385000000,
+    "$lib": "posthog-js",
+    "$lib_version": "1.275.1"
   }
 }
 ```
@@ -32,7 +36,8 @@
   "properties": {
     "origin": "INSPIRED",
     "name": "Алиса",
-    "timestamp": 1703123456789
+    "$lib": "posthog-js",
+    "$lib_version": "1.275.1"
   }
 }
 ```
@@ -42,9 +47,10 @@
 {
   "event": "start_chat",
   "properties": {
-    "slug": "alisa",
+    "slug": "alice",
     "name": "Алиса",
-    "timestamp": 1703123456789
+    "$lib": "posthog-js",
+    "$lib_version": "1.275.1"
   }
 }
 ```
@@ -56,8 +62,9 @@
   "properties": {
     "characterId": "1",
     "characterName": "Алиса",
-    "messageLength": 25,
-    "timestamp": 1703123456789
+    "messageLength": 15,
+    "$lib": "posthog-js",
+    "$lib_version": "1.275.1"
   }
 }
 ```
@@ -71,7 +78,8 @@
     "amount": 300,
     "stars": 300,
     "balance": 1300,
-    "timestamp": 1703123456789
+    "$lib": "posthog-js",
+    "$lib_version": "1.275.1"
   }
 }
 ```
@@ -81,19 +89,20 @@
 {
   "event": "quest_complete",
   "properties": {
-    "key": "create_persona",
-    "reward": 50,
-    "balance": 1050,
-    "timestamp": 1703123456789
+    "key": "daily_login",
+    "reward": 20,
+    "balance": 1020,
+    "$lib": "posthog-js",
+    "$lib_version": "1.275.1"
   }
 }
 ```
 
-## Backend Events (Console Logs)
+## Backend Logs (Console)
 
 ### 1. chat_message
 ```
-📊 [analytics] chat_message: user=123456789, girl=1, msg_length=25
+📊 [analytics] chat_message: user=123456789, girl=1, msg_length=15
 ```
 
 ### 2. purchase_success
@@ -101,29 +110,59 @@
 📊 [analytics] purchase_success: user=123456789, amount=300, pack=small
 ```
 
-## PostHog Configuration
+## Implementation Status
 
-### Environment Variables
+### ✅ Frontend Events
+- [x] open_app - App.jsx line 22
+- [x] onboarding_complete - Onboarding.jsx line 63
+- [x] create_persona - InspiredTab.jsx line 151
+- [x] start_chat - Character.jsx line 189
+- [x] send_message - ChatScreen.jsx line 110
+- [x] purchase_success - Store.jsx line 108
+- [x] quest_complete - questTracker.js line 52
+
+### ✅ Backend Logs
+- [x] /api/chat/reply → track('chat_message') - api/index.js line 330
+- [x] /api/payments/check → track('purchase_success') - api/index.js line 1252
+- [x] /api/payments/webhook → track('purchase_success') - api/index.js line 1363
+
+## Setup Instructions
+
+### 1. Enable PostHog
 ```bash
+# Add to .env
 VITE_POSTHOG_KEY=phc_your_key_here
 VITE_POSTHOG_HOST=https://app.posthog.com
 ```
 
-### Event Properties
-- All events include `timestamp` (Unix timestamp)
-- User identification via Telegram WebApp initData
-- Consistent property naming (camelCase)
-- Error handling with fallback to console.log
+### 2. Rebuild Frontend
+```bash
+cd peach-web
+npm run build
+```
 
-### Testing
-1. Open browser DevTools → Console
-2. Look for `📊` prefixed logs
-3. Check PostHog dashboard for events
-4. Verify user identification works
+### 3. Verify Events
+1. Open browser dev tools
+2. Check console for `📊 event_name` logs
+3. Check Network tab for PostHog requests to `https://app.posthog.com/capture/`
 
 ## Event Flow
-1. **App Start**: `open_app` → `quest_complete` (daily_login)
-2. **Onboarding**: `onboarding_complete`
-3. **Persona Creation**: `create_persona` → `quest_complete`
-4. **Chat**: `start_chat` → `send_message` → `quest_complete`
-5. **Purchase**: `purchase_success` → `quest_complete`
+
+```
+User Action → Frontend track() → PostHog API
+User Action → Backend API → Console Log
+```
+
+## Testing
+
+Run the analytics test script:
+```bash
+./scripts/test-analytics.sh
+```
+
+## Notes
+
+- All events include console logging for debugging
+- PostHog events include `$lib` and `$lib_version` automatically
+- Backend events are logged to console for monitoring
+- Events are sent asynchronously and won't block user actions
