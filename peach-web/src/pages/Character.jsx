@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from '../components/Toast';
 import { getCharacterBySlug } from '../services/pb';
+import { track } from '../utils/analytics';
 
 export default function Character() {
   const { slug } = useParams();
@@ -9,6 +10,7 @@ export default function Character() {
   const [character, setCharacter] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showPhrases, setShowPhrases] = useState(false);
+  const [navigating, setNavigating] = useState(false);
 
   useEffect(() => {
     loadCharacter();
@@ -24,6 +26,9 @@ export default function Character() {
         return;
       }
       setCharacter(data);
+      
+      // Track persona view
+      track('open_persona', { slug, name: data.name });
     } catch (error) {
       console.error('Ошибка загрузки персонажа:', error);
       toast.error('Не удалось загрузить персонажа');
@@ -179,30 +184,40 @@ export default function Character() {
 
         {/* Кнопка начать чат */}
         <button
-          onClick={() => navigate(`/chats/${character.id}`)}
+          onClick={() => {
+            setNavigating(true);
+            track('start_chat', { slug: character.slug, name: character.name });
+            navigate(`/chats/${character.id}`);
+          }}
+          disabled={navigating}
           style={{
             width: '100%',
             padding: '16px',
-            background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+            background: navigating ? '#6b7280' : 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
             color: '#fff',
             border: 'none',
             borderRadius: '20px',
             fontSize: '1.2rem',
             fontWeight: '600',
-            cursor: 'pointer',
-            boxShadow: '0 10px 30px rgba(139, 92, 246, 0.3)',
-            transition: 'all 0.3s ease'
+            cursor: navigating ? 'not-allowed' : 'pointer',
+            boxShadow: navigating ? '0 5px 15px rgba(0,0,0,0.2)' : '0 10px 30px rgba(139, 92, 246, 0.3)',
+            transition: 'all 0.3s ease',
+            opacity: navigating ? 0.7 : 1
           }}
           onMouseOver={(e) => {
-            e.target.style.transform = 'translateY(-2px)';
-            e.target.style.boxShadow = '0 15px 40px rgba(139, 92, 246, 0.4)';
+            if (!navigating) {
+              e.target.style.transform = 'translateY(-2px)';
+              e.target.style.boxShadow = '0 15px 40px rgba(139, 92, 246, 0.4)';
+            }
           }}
           onMouseOut={(e) => {
-            e.target.style.transform = 'translateY(0)';
-            e.target.style.boxShadow = '0 10px 30px rgba(139, 92, 246, 0.3)';
+            if (!navigating) {
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = '0 10px 30px rgba(139, 92, 246, 0.3)';
+            }
           }}
         >
-          Начать чат
+          {navigating ? '⏳ Переход в чат...' : '💬 Начать чат'}
         </button>
 
         {/* Кнопка предпросмотра реплик */}

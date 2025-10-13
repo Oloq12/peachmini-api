@@ -1,0 +1,56 @@
+{
+  "timestamp": "2025-10-13T14:58:10Z",
+  "api_url": "https://peach-mini-qt4sgywv0-trsoyoleg-4006s-projects.vercel.app",
+  "front_url": "https://peach-mini-5outqmj04-trsoyoleg-4006s-projects.vercel.app",
+  "total_tests": 9,
+  "passed": 8,
+  "failed": 1,
+  "success_rate": "88%",
+  "results": [
+    {
+      "test": "GET /api/health",
+      "status": "PASS",
+      "details": "HTTP 200 OK"
+    },
+    {
+      "test": "GET /api/girls (count: 6)",
+      "status": "PASS",
+      "details": "Found 6 characters"
+    },
+    {
+      "test": "GET /api/girls/naomi",
+      "status": "PASS",
+      "details": "Character: null"
+    },
+    {
+      "test": "POST /api/chat/reply",
+      "status": "FAIL",
+      "details": "HTTP 404"
+    },
+    {
+      "test": "GET /api/ref/status",
+      "status": "PASS",
+      "details": "Earned: 0 PP"
+    },
+    {
+      "test": "GET /api/quests/status",
+      "status": "PASS",
+      "details": "Completed: 0 quests"
+    },
+    {
+      "test": "POST /api/payments/createInvoice",
+      "status": "PASS",
+      "details": "Invoice created"
+    },
+    {
+      "test": "POST /api/payments/check",
+      "status": "PASS",
+      "details": "HTTP 404 (expected)"
+    },
+    {
+      "test": "HEAD https://peach-mini-5outqmj04-trsoyoleg-4006s-projects.vercel.app/health",
+      "status": "PASS",
+      "details": "HTTP 200"
+    }
+  ]
+}

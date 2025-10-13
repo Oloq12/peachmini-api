@@ -5,6 +5,7 @@ import { pb, sendChatMessage, getCharacterBySlug } from '../../services/pb';
 import UpgradeModal from './UpgradeModal';
 import { track } from '../../utils/analytics';
 import { ChatMessageSkeleton } from '../Skeleton';
+import { questActions } from '../../utils/questTracker';
 
 export default function ChatScreen() {
   const { girlId } = useParams();
@@ -106,9 +107,10 @@ export default function ChatScreen() {
       }
 
       // Отслеживание отправки сообщения
-      track('chat_message', { 
-        model: 'gpt-4o-mini',
-        characterId: character.id 
+      track('send_message', { 
+        characterId: character.id,
+        characterName: character.name,
+        messageLength: userMessage.length
       });
 
       // Добавляем ответ бота

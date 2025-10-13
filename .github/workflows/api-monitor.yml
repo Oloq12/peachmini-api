@@ -1,0 +1,33 @@
+name: API Health Monitor
+
+on:
+  schedule:
+    # Каждые 5 минут
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Ручной запуск
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Ping API Health Endpoint
+        run: |
+          echo "🏥 Pinging API health endpoint..."
+          
+          # Ping с таймаутом 10 секунд
+          if curl -fsSL --max-time 10 https://peachmini-api.vercel.app/api/health; then
+            echo "✅ API is UP"
+            exit 0
+          else
+            echo "❌ API DOWN"
+            exit 1
+          fi
+      
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "⚠️ API Health Check Failed!"
+          echo "Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          # В production можно добавить Slack/Discord/Telegram notification
+

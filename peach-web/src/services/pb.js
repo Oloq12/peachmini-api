@@ -11,14 +11,14 @@ if (PB_URL) {
 export { pb, PB_URL };
 
 // Функция для получения персонажей
-export async function getCharacters() {
+export async function getCharacters(page = 1, limit = 24) {
   const API_URL = import.meta.env.VITE_API_URL || 'https://unrazed-wendell-pseudocentric.ngrok-free.dev';
   
-  console.log('🔵 getCharacters: API_URL =', API_URL);
+  console.log('🔵 getCharacters: API_URL =', API_URL, 'page =', page, 'limit =', limit);
   
   try {
     console.log('🔵 getCharacters: Попытка загрузить через API...');
-    const response = await fetch(`${API_URL}/girls`, {
+    const response = await fetch(`${API_URL}/girls?page=${page}&limit=${limit}`, {
       headers: {
         'ngrok-skip-browser-warning': 'true'
       }
@@ -27,11 +27,15 @@ export async function getCharacters() {
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    const data = await response.json();
-    console.log('📊 getCharacters: Data from API:', data);
-    if (data.ok && data.girls) {
-      console.log('✅ getCharacters: Возвращаем данные из API:', data.girls.length, 'персонажей');
-      return data.girls;
+    const result = await response.json();
+    console.log('📊 getCharacters: Data from API:', result);
+    if (result.ok && result.data) {
+      console.log('✅ getCharacters: Возвращаем данные из API:', result.data.girls.length, 'персонажей');
+      return {
+        girls: result.data.girls,
+        total: result.data.total,
+        hasMore: result.data.hasMore
+      };
     } else {
       throw new Error('Invalid response format');
     }
@@ -41,7 +45,11 @@ export async function getCharacters() {
     // Возвращаем моковые данные в случае ошибки
     const mockData = getMockCharacters();
     console.log('📊 getCharacters: Mock data:', mockData);
-    return mockData;
+    return {
+      girls: mockData,
+      total: mockData.length,
+      hasMore: false
+    };
   }
 }
 
@@ -60,13 +68,19 @@ export async function getCharacterBySlug(slug) {
     });
     console.log('🟢 getCharacterBySlug: Response status:', response.status);
     if (!response.ok) {
+      if (response.status === 404) {
+        const errorData = await response.json();
+        if (errorData.code === 'NOT_FOUND') {
+          throw new Error('Character not found');
+        }
+      }
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    const data = await response.json();
-    console.log('📊 getCharacterBySlug: Data from API:', data);
-    if (data.ok && data.girl) {
+    const result = await response.json();
+    console.log('📊 getCharacterBySlug: Data from API:', result);
+    if (result.ok && result.data) {
       console.log('✅ getCharacterBySlug: Персонаж найден');
-      return data.girl;
+      return result.data;
     } else {
       throw new Error('Character not found');
     }
@@ -155,21 +169,25 @@ export async function sendChatMessage(girlId, userMsg, userId = 'demo') {
     console.log('🟢 sendChatMessage: Response status:', response.status);
     
     if (!response.ok) {
-      if (response.status === 402) {
+      const errorData = await response.json();
+      if (response.status === 402 || errorData.code === 'NO_FUNDS') {
         throw new Error('NO_FUNDS');
       }
-      throw new Error(`HTTP error! status: ${response.status}`);
+      if (errorData.code === 'TIMEOUT') {
+        throw new Error(errorData.error || 'Request timeout');
+      }
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
     
-    const data = await response.json();
-    console.log('📊 sendChatMessage: Data from API:', data);
+    const result = await response.json();
+    console.log('📊 sendChatMessage: Data from API:', result);
     
-    if (data.ok && data.reply) {
+    if (result.ok && result.data) {
       console.log('✅ sendChatMessage: Сообщение отправлено');
       return {
         success: true,
-        reply: data.reply,
-        balance: data.balance
+        reply: result.data.reply,
+        balance: result.data.balance
       };
     } else {
       throw new Error('Invalid response format');

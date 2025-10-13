@@ -44,18 +44,26 @@ export default function Store() {
   const handlePurchase = async (pkg) => {
     setPurchasing(pkg.id);
 
+    // Track purchase attempt
+    track('purchase_attempt', { 
+      packId: pkg.id,
+      points: pkg.points,
+      price: pkg.price
+    });
+
     try {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
-      const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'demo_user';
+      const tgId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'demo_user';
       
-      const response = await fetch(`${API_URL}/payments/createInvoice`, {
+      const response = await fetch(`${API_URL}/api/payments/createInvoice`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify({ 
-          packageId: pkg.id,
-          userId
+          tgId,
+          packId: pkg.id
         })
       });
 
@@ -63,17 +71,12 @@ export default function Store() {
         throw new Error('Ошибка создания инвойса');
       }
 
-      const data = await response.json();
+      const result = await response.json();
       
-      if (data.ok) {
-        // Отслеживание покупки
-        track('purchase_click', { 
-          packageId: pkg.id,
-          points: pkg.points,
-          price: pkg.price
-        });
-
-        toast.success('🎉 Инвойс отправлен (демо)', {
+      if (result.ok && result.data) {
+        const { invoiceLink, paymentId, pack } = result.data;
+        
+        toast.success('🎉 Инвойс создан', {
           duration: 3000,
           style: {
             background: '#1a1a1f',
@@ -81,6 +84,44 @@ export default function Store() {
             borderRadius: '12px'
           }
         });
+        
+        // В production: window.Telegram.WebApp.openInvoice(invoiceLink)
+        // После успешной оплаты webhook обновит баланс
+        
+        // Simulate payment check (for demo)
+        if (paymentId) {
+          setTimeout(async () => {
+            try {
+              const checkResponse = await fetch(`${API_URL}/api/payments/check`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'ngrok-skip-browser-warning': 'true'
+                },
+                body: JSON.stringify({ paymentId, dev: true })
+              });
+              
+              const checkResult = await checkResponse.json();
+              
+              if (checkResult.ok && checkResult.data?.credited) {
+                // Track successful payment
+                track('purchase_success', {
+                  packId: pack.id,
+                  amount: pack.amount,
+                  stars: pack.stars,
+                  balance: checkResult.data.balance
+                });
+                
+                toast.success(`✅ Оплата успешна! +${pack.amount}💎`, { duration: 4000 });
+                
+                // Reload balance
+                setTimeout(() => window.location.reload(), 2000);
+              }
+            } catch (e) {
+              console.error('Payment check error:', e);
+            }
+          }, 2000);
+        }
       }
     } catch (error) {
       console.error('Ошибка покупки:', error);

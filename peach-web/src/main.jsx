@@ -23,9 +23,10 @@ if (window.Telegram?.WebApp) {
 initAnalytics();
 
 // Отслеживание открытия приложения
-track('app_open', {
+track('open_app', {
   platform: window.Telegram?.WebApp?.platform || 'web',
-  version: window.Telegram?.WebApp?.version || 'unknown'
+  version: window.Telegram?.WebApp?.version || 'unknown',
+  userId: window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'unknown'
 });
 
 createRoot(document.getElementById('root')).render(

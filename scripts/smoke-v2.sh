@@ -28,7 +28,7 @@ echo ""
 echo "3️⃣  Testing /api/chat/reply..."
 curl -s -X POST "$VITE_API_URL/api/chat/reply" \
   -H "Content-Type: application/json" \
-  -d '{"girlId":"test","userMsg":"Привет!","userId":"smoke"}' | head -c 400 || echo "❌ chat FAIL"
+  -d '{"girlId":"1","userMsg":"Привет!","userId":"smoke"}' | head -c 400 || echo "❌ chat FAIL"
 echo ""
 
 # Test 4: Frontend health

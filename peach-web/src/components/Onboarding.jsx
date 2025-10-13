@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { track } from '../utils/analytics';
 
 const Onboarding = () => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -57,6 +58,12 @@ const Onboarding = () => {
   const handleComplete = () => {
     // Сохраняем флаг завершения onboarding
     localStorage.setItem('onboarding_done', 'true');
+    
+    // Track onboarding completion
+    track('onboarding_complete', {
+      steps_completed: steps.length,
+      timestamp: Date.now()
+    });
     
     // Analytics событие
     if (window.Telegram?.WebApp) {

@@ -570,10 +570,10 @@ bot.start(async (ctx) => {
     // Обрабатываем реферал через API
     if (referralCode) {
       try {
-        const API_URL = process.env.API_URL || 'http://localhost:8787';
-        console.log('📡 Вызов API /ref/apply:', API_URL);
+        const API_URL = process.env.API_URL || 'https://peach-mini-golybtoze-trsoyoleg-4006s-projects.vercel.app';
+        console.log('📡 Вызов API /api/ref/apply:', API_URL);
         
-        const response = await fetch(`${API_URL}/ref/apply`, {
+        const response = await fetch(`${API_URL}/api/ref/apply`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tgId: tgId.toString(), code: referralCode })
@@ -582,42 +582,33 @@ bot.start(async (ctx) => {
         const result = await response.json();
         console.log('📥 Ответ API:', result);
         
-        if (result.ok) {
-          console.log('✅ Реферал применён! Инвайтер:', result.inviterId, '| Бонус:', result.bonus);
+        if (result.ok && result.data) {
+          const { credited, amount, alreadyApplied } = result.data;
           
-          // Уведомляем пригласившего (если возможно)
-          try {
-            await ctx.telegram.sendMessage(
-              result.inviterId,
-              `🎉 *Ваш друг присоединился!*\n\n` +
-              `💰 +${result.bonus} PeachPoints начислено\n` +
-              `👥 Всего рефералов: проверьте /ref`,
+          if (credited && !alreadyApplied) {
+            console.log('✅ Реферал применён! Бонус автору:', amount);
+            
+            // Уведомляем нового пользователя
+            await ctx.reply(
+              `🎁 *Добро пожаловать!*\n\n` +
+              `Вы присоединились по приглашению друга.\n` +
+              `Ваш друг получил *+${amount} PeachPoints*! 💰\n\n` +
+              `Начните общение и зарабатывайте бонусы!`,
               { parse_mode: 'Markdown' }
             );
-            console.log('✅ Уведомление отправлено инвайтеру:', result.inviterId);
-          } catch (e) {
-            console.log('⚠️ Не удалось уведомить инвайтера:', e.message);
+          } else if (alreadyApplied) {
+            console.log('ℹ️ Реферал уже был применён ранее');
           }
-          
-          // Уведомляем нового пользователя
-          await ctx.reply(
-            `🎁 *Добро пожаловать!*\n\n` +
-            `Вы присоединились по приглашению друга.\n` +
-            `Ваш друг получил *+${result.bonus} PeachPoints*! 💰`,
-            { parse_mode: 'Markdown' }
-          );
         } else {
-          console.log('⚠️ Реферал НЕ применён:', result.error);
-          if (result.error === 'SELF_REFERRAL') {
+          console.log('⚠️ Реферал НЕ применён:', result.error, result.code);
+          if (result.code === 'SELF_REFERRAL') {
             await ctx.reply('⚠️ Нельзя использовать свой собственный реферальный код!');
-          } else if (result.error === 'ALREADY_REFERRED') {
-            await ctx.reply('ℹ️ Вы уже использовали реферальный код ранее.');
-          } else if (result.error === 'INVALID_CODE') {
+          } else if (result.code === 'INVALID_CODE') {
             await ctx.reply('❌ Неверный реферальный код.');
           }
         }
       } catch (e) {
-        console.error('❌ Ошибка вызова API /ref/apply:', e.message);
+        console.error('❌ Ошибка вызова API /api/ref/apply:', e.message);
       }
     }
     
@@ -668,43 +659,40 @@ bot.command('ref', async (ctx) => {
   console.log('🔗 /ref от:', tgId, `(${userName})`);
   
   try {
-    // Создаем пользователя, если его нет
-    const user = await ensureUserInDB(tgId);
-    console.log('👤 Пользователь в БД:', user.tgId, '| Код:', user.referralCode);
+    // Получаем статистику через API (auto-provision)
+    const API_URL = process.env.API_URL || 'https://peach-mini-golybtoze-trsoyoleg-4006s-projects.vercel.app';
+    console.log('📡 Вызов API /api/ref/status:', API_URL);
     
-    // Получаем статистику через API
-    const API_URL = process.env.API_URL || 'http://localhost:8787';
-    console.log('📡 Вызов API /ref/status:', API_URL);
+    const response = await fetch(`${API_URL}/api/ref/status?tgId=${tgId}`);
+    const result = await response.json();
+    console.log('📥 Ответ API:', result.ok ? 'OK' : result.error);
     
-    const response = await fetch(`${API_URL}/ref/status?userId=${tgId}`);
-    const data = await response.json();
-    console.log('📥 Ответ API:', data.ok ? 'OK' : data.error);
-    
-    if (!data.ok) {
-      console.error('❌ API вернул ошибку:', data.error);
+    if (!result.ok) {
+      console.error('❌ API вернул ошибку:', result.error);
       await ctx.reply(
         `❌ *Не удалось загрузить статистику*\n\n` +
-        `Ошибка: ${data.error}\n\n` +
+        `Ошибка: ${result.error}\n\n` +
         `Попробуйте позже или напишите в поддержку.`,
         { parse_mode: 'Markdown' }
       );
       return;
     }
     
+    const data = result.data;
     const botUsername = ctx.me.username || 'Amourath_ai_bot';
     const referralLink = `https://t.me/${botUsername}?start=ref_${data.referralCode}`;
     
     console.log('✅ Реферальная ссылка:', referralLink);
-    console.log('📊 Статистика: рефералов =', data.stats.count, ', заработано =', data.stats.earned, 'PP');
+    console.log('📊 Статистика: рефералов =', data.refCount, ', заработано =', data.earned, 'PP');
     
     await ctx.reply(
       `🔗 *РЕФЕРАЛЬНАЯ ПРОГРАММА*\n\n` +
       `📤 *Ваша ссылка:*\n` +
       `\`${referralLink}\`\n\n` +
       `📊 *Статистика:*\n` +
-      `👥 Приглашено друзей: *${data.stats.count}*\n` +
-      `💰 Заработано: *${data.stats.earned} PP*\n` +
-      `💎 Текущий баланс: *${data.stats.balance} PP*\n\n` +
+      `👥 Приглашено друзей: *${data.refCount}*\n` +
+      `💰 Заработано: *${data.earned} PP*\n` +
+      `💎 Текущий баланс: *${data.balance} PP*\n\n` +
       `💡 *Как это работает:*\n` +
       `• Отправь ссылку другу\n` +
       `• Он регистрируется через неё\n` +
@@ -772,6 +760,105 @@ bot.command('shop', async ctx => {
   ]);
   
   await ctx.reply(getShopInfo(), keyboard);
+});
+
+// /store — покупка кристаллов (интеграция с API)
+bot.command('store', async (ctx) => {
+  try {
+    const tgId = ctx.from.id;
+    const API_URL = process.env.API_URL || 'https://peach-mini-qt4sgywv0-trsoyoleg-4006s-projects.vercel.app';
+    
+    // Получаем актуальный баланс пользователя
+    let balance = 1000; // default
+    try {
+      const response = await fetch(`${API_URL}/api/ref/status?tgId=${tgId}`);
+      const result = await response.json();
+      if (result.ok && result.data) {
+        balance = result.data.balance || 1000;
+      }
+    } catch (e) {
+      console.error('❌ Failed to fetch balance:', e.message);
+    }
+    
+    const keyboard = Markup.inlineKeyboard([
+      [
+        Markup.button.callback('💎 Малый (300⭐ → 300💎)', 'crystals_small')
+      ],
+      [
+        Markup.button.callback('💎 Средний (600⭐ → 549💎) +10%', 'crystals_medium')
+      ],
+      [
+        Markup.button.callback('💎 Большой (850⭐ → 799💎) +20%', 'crystals_large')
+      ]
+    ]);
+    
+    await ctx.reply(
+      `💎 *МАГАЗИН КРИСТАЛЛОВ*\n\n` +
+      `💰 Ваш баланс: *${balance.toLocaleString()} PP*\n\n` +
+      `Купите PeachPoints для общения с персонажами:\n\n` +
+      `💎 *Малый пакет*\n` +
+      `300⭐ → 300💎\n\n` +
+      `💎 *Средний пакет* (+10% бонус)\n` +
+      `600⭐ → 549💎\n\n` +
+      `💎 *Большой пакет* (+20% бонус)\n` +
+      `850⭐ → 799💎\n\n` +
+      `🌟 Оплата через Telegram Stars`,
+      { 
+        parse_mode: 'Markdown',
+        ...keyboard
+      }
+    );
+  } catch (e) {
+    console.error('❌ Store command error:', e);
+    await ctx.reply('❌ Произошла ошибка. Попробуйте позже.');
+  }
+});
+
+// Обработка покупки кристаллов
+bot.action(/^crystals_(.+)$/, async (ctx) => {
+  try {
+    const packId = ctx.match[1];
+    const tgId = ctx.from.id;
+    
+    console.log(`💎 Crystal purchase attempt: ${tgId} → ${packId}`);
+    
+    const API_URL = process.env.API_URL || 'https://peach-mini-qt4sgywv0-trsoyoleg-4006s-projects.vercel.app';
+    
+    // Create invoice через наш API
+    const response = await fetch(`${API_URL}/api/payments/createInvoice`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tgId: tgId.toString(), packId })
+    });
+    
+    const result = await response.json();
+    
+    if (result.ok && result.data) {
+      const { invoiceLink, pack } = result.data;
+      
+      await ctx.editMessageText(
+        `💎 *${pack.title}*\n\n` +
+        `💰 Стоимость: ${pack.stars}⭐\n` +
+        `💎 Получите: ${pack.amount} PeachPoints\n\n` +
+        `Нажмите кнопку для оплаты:`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [[
+              { text: '💳 Оплатить', url: invoiceLink }
+            ]]
+          }
+        }
+      );
+      
+      console.log(`✅ Invoice sent to ${tgId}: ${invoiceLink}`);
+    } else {
+      await ctx.answerCbQuery('❌ Ошибка создания инвойса');
+    }
+  } catch (e) {
+    console.error('❌ Store action error:', e);
+    await ctx.answerCbQuery('❌ Произошла ошибка');
+  }
 });
 
 bot.command('buy_photo', async ctx => {
@@ -1256,16 +1343,101 @@ bot.on('web_app_data', async ctx => {
   }
 });
 
+// Обработчик pre-checkout (перед оплатой)
+bot.on('pre_checkout_query', async (ctx) => {
+  try {
+    const paymentPayload = ctx.preCheckoutQuery.invoice_payload;
+    
+    console.log('🔍 Pre-checkout query:', paymentPayload);
+    
+    // Для покупки кристаллов (payload начинается с pay_)
+    if (paymentPayload.startsWith('pay_')) {
+      const API_URL = process.env.API_URL || 'https://peach-mini-qt4sgywv0-trsoyoleg-4006s-projects.vercel.app';
+      
+      try {
+        // Отправляем webhook на API для валидации
+        const response = await fetch(`${API_URL}/api/payments/webhook`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pre_checkout_query: {
+              id: ctx.preCheckoutQuery.id,
+              from: { id: ctx.preCheckoutQuery.from.id },
+              invoice_payload: paymentPayload
+            }
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.ok) {
+          console.log(`✅ Pre-checkout: OK for ${paymentPayload}`);
+          // API уже ответил через answerPreCheckoutQuery
+          return;
+        }
+      } catch (e) {
+        console.error('❌ Pre-checkout webhook failed:', e);
+      }
+    }
+    
+    // По умолчанию разрешаем оплату
+    await ctx.answerPreCheckoutQuery(true);
+    
+  } catch (e) {
+    console.error('❌ Pre-checkout error:', e);
+    await ctx.answerPreCheckoutQuery(true);
+  }
+});
+
 // Обработчик успешных платежей
 bot.on('successful_payment', async ctx => {
   const payment = ctx.message.successful_payment;
   const userId = ctx.from.id.toString();
+  const paymentPayload = payment.invoice_payload;
+  
+  console.log('💰 Successful payment:', paymentPayload);
+  
+  // Проверяем, это наша покупка кристаллов (начинается с pay_)
+  if (paymentPayload.startsWith('pay_')) {
+    try {
+      const API_URL = process.env.API_URL || 'https://peach-mini-qt4sgywv0-trsoyoleg-4006s-projects.vercel.app';
+      
+      // Отправляем webhook на API
+      const response = await fetch(`${API_URL}/api/payments/webhook`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: {
+            from: { id: ctx.from.id },
+            successful_payment: payment
+          }
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.ok && result.data?.credited) {
+        await ctx.reply(
+          `✅ *ОПЛАТА УСПЕШНА!*\n\n` +
+          `💎 Баланс пополнен: *+${result.data.amount} PeachPoints*\n` +
+          `💰 Текущий баланс: *${result.data.balance} PP*\n\n` +
+          `Спасибо за покупку! 🎉`,
+          { parse_mode: 'Markdown' }
+        );
+        
+        console.log(`[payment] user ${userId} +${result.data.amount} stars`);
+      }
+    } catch (e) {
+      console.error('❌ Webhook call failed:', e);
+      await ctx.reply('✅ Оплата получена! Баланс будет обновлен в ближайшее время.');
+    }
+    return;
+  }
+  
+  // Старая логика для других типов покупок
   const user = await ensureUser(ctx.from.id);
   
-  console.log('Получен успешный платеж:', payment);
-  
-  // Определяем тип покупки по payload
-  if (payment.invoice_payload.startsWith('photo_1_')) {
+  if (paymentPayload.startsWith('photo_1_')) {
     // Покупка 1 фото
     user.freePhotosLeft += 1;
     users.set(userId, user);

@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { useEffect } from 'react';
 import BottomNav from './components/BottomNav';
 import Onboarding from './components/Onboarding';
 import Home from './pages/Home';
@@ -12,8 +13,22 @@ import Quests from './pages/Quests';
 import Character from './pages/Character';
 import ChatScreen from './components/chat/ChatScreen';
 import Landing from './pages/Landing';
+import { initQuestTracking } from './utils/questTracker';
+import { track } from './utils/analytics';
 
 export default function App() {
+  useEffect(() => {
+    // Track app open
+    track('open_app', {
+      platform: window.Telegram?.WebApp?.platform || 'web',
+      version: window.Telegram?.WebApp?.version || 'unknown',
+      timestamp: Date.now()
+    });
+    
+    // Initialize quest tracking on app start
+    initQuestTracking();
+  }, []);
+
   return (
     <Router>
       <div style={{

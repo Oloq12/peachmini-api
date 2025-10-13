@@ -1,5 +1,15 @@
 {
   "version": 2,
+  "crons": [
+    {
+      "path": "/api/health",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/heartbeat/check",
+      "schedule": "*/5 * * * *"
+    }
+  ],
   "builds": [
     {
       "src": "api/test.js",
@@ -21,8 +31,10 @@
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Frame-Options", "value": "" },
-        { "key": "Content-Security-Policy", "value": "frame-ancestors https://web.telegram.org https://*.telegram.org https://t.me https://*.t.me;" }
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors https://web.telegram.org https://*.telegram.org https://t.me https://*.t.me"
+        }
       ]
     }
   ],
@@ -73,6 +85,18 @@
     },
     {
       "source": "/payments/createInvoice",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/payments/webhook",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/payments/check",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/payments/packages",
       "destination": "/api/index.js"
     },
     {

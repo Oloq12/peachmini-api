@@ -17,29 +17,40 @@ export default function Referrals() {
       
       // Get Telegram user ID
       const tg = window.Telegram?.WebApp;
-      const userId = tg?.initDataUnsafe?.user?.id;
+      const userId = tg?.initDataUnsafe?.user?.id || 'demo';
+      const botUsername = tg?.initDataUnsafe?.user?.username || 'Amourath_ai_bot';
       
-      if (!userId) {
-        console.error('No Telegram user ID available');
-        setData({
-          referralLink: 'https://t.me/Amourath_ai_bot',
-          referralCode: 'N/A',
-          stats: { count: 0, earned: 0, balance: 0 },
-          referrals: []
-        });
-        return;
-      }
+      console.log('🔵 Fetching referral data for tgId:', userId);
       
-      const response = await fetch(`${API_URL}/ref/status?userId=${userId}`);
+      const response = await fetch(`${API_URL}/api/ref/status?tgId=${userId}`, {
+        headers: {
+          'ngrok-skip-browser-warning': 'true'
+        }
+      });
       const result = await response.json();
       
-      if (result.ok) {
-        setData(result);
+      console.log('📥 API Response:', result);
+      
+      if (result.ok && result.data) {
+        const referralLink = `https://t.me/${botUsername}?start=ref_${result.data.referralCode}`;
+        
+        setData({
+          referralLink,
+          referralCode: result.data.referralCode,
+          stats: {
+            count: result.data.refCount,
+            earned: result.data.earned,
+            balance: result.data.balance
+          },
+          referrals: [] // TODO: получать список рефералов из API
+        });
+        
+        console.log('✅ Referral data loaded:', result.data);
       } else {
         console.error('Failed to fetch referral data:', result.error);
-        // Show empty state instead of error
+        // Show empty state
         setData({
-          referralLink: 'https://t.me/Amourath_ai_bot',
+          referralLink: `https://t.me/${botUsername}`,
           referralCode: 'N/A',
           stats: { count: 0, earned: 0, balance: 0 },
           referrals: []
@@ -47,7 +58,7 @@ export default function Referrals() {
       }
     } catch (error) {
       console.error('Error fetching referral data:', error);
-      // Show empty state instead of error
+      // Show empty state
       setData({
         referralLink: 'https://t.me/Amourath_ai_bot',
         referralCode: 'N/A',
