@@ -275,23 +275,15 @@ if (BOT_TOKEN) {
 // Chat endpoint - moved to top
 app.post('/chat/reply', (req, res) => {
   console.log('💬 /chat endpoint called');
+  console.log('💬 Request body:', req.body);
   
-  try {
-    res.json({
-      ok: true,
-      data: {
-        reply: 'Привет! Я Алиса. Как дела?',
-        balance: 1000
-      }
-    });
-  } catch (e) {
-    console.error('❌ Chat error:', e);
-    res.status(500).json({ 
-      ok: false, 
-      error: 'An error occurred while processing your message. Please try again.',
-      code: 'CHAT_FAIL' 
-    });
-  }
+  res.json({
+    ok: true,
+    data: {
+      reply: 'Привет! Я Алиса. Как дела?',
+      balance: 1000
+    }
+  });
 });
 
 // Alternative chat endpoint
