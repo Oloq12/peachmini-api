@@ -43,6 +43,16 @@ WEBAPP_ORIGIN=
 scripts/smoke-v2.sh
 ```
 
+## Мониторинг (Heartbeat)
+
+```bash
+# GitHub Actions каждые 5 минут
+.github/workflows/heartbeat.yml
+```
+
+**Настройка:** См. `docs/Heartbeat-Setup.md`  
+**Секреты:** `BOT_TOKEN`, `ADMIN_TG_ID` в GitHub Settings
+
 ## Roadmap
 
 См. docs/Roadmap.md
