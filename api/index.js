@@ -476,56 +476,20 @@ app.post('/api/test', (req, res) => {
 });
 
 // Chat endpoint
-app.post('/chat/reply', async (req, res) => {
+app.post('/chat/reply', (req, res) => {
+  console.log('💬 /chat endpoint called');
+  
   try {
-    console.log('💬 /chat endpoint called');
-    console.log('💬 Request body:', JSON.stringify(req.body, null, 2));
-    
-    const { girlId, userMsg, userId = 'demo' } = req.body || {};
-    
-    console.log(`💬 /chat: user=${userId}, girl=${girlId}, msg="${userMsg?.slice(0, 30)}..."`);
-    
-    // Simple validation
-    if (!girlId || !userMsg) {
-      return res.status(400).json({ 
-        ok: false, 
-        error: 'girlId and userMsg are required',
-        code: 'MISSING_FIELDS' 
-      });
-    }
-
-    // Get character data
-    const girl = mockGirls.find(g => g.id === girlId);
-    if (!girl) {
-      return res.status(404).json({ 
-        ok: false, 
-        error: 'Character not found',
-        code: 'CHARACTER_NOT_FOUND' 
-      });
-    }
-
-    // Simple fallback response for now
-    const reply = `Привет! Я ${girl.name}. Как дела?`;
-
-    console.log(`✅ /chat: OK, reply=${reply.slice(0, 40)}...`);
-
-    return res.json({
+    res.json({
       ok: true,
       data: {
-        reply,
+        reply: 'Привет! Я Алиса. Как дела?',
         balance: 1000
       }
     });
-
   } catch (e) {
     console.error('❌ Chat error:', e);
-    console.error('❌ Error details:', {
-      message: e.message,
-      stack: e.stack,
-      name: e.name
-    });
-    
-    return res.status(500).json({ 
+    res.status(500).json({ 
       ok: false, 
       error: 'An error occurred while processing your message. Please try again.',
       code: 'CHAT_FAIL' 
