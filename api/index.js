@@ -1,7 +1,7 @@
-// Vercel Serverless API with Mock Data
+// Vercel Serverless API with DeepSeek AI
 const express = require('express');
 const cors = require('cors');
-const { OpenAI } = require('openai');
+const axios = require('axios');
 
 const app = express();
 
@@ -9,358 +9,600 @@ const app = express();
 app.use(express.json());
 app.use(cors({ origin: '*' }));
 
-// Middleware to handle /api prefix
-app.use((req, res, next) => {
-  // Remove /api prefix if present
-  if (req.url.startsWith('/api/')) {
-    req.url = req.url.replace('/api', '');
-  }
-  next();
-});
+// Environment variables
+const DEEPSEEK_KEY = process.env.DEEPSEEK_KEY;
+const AI_PROVIDER = process.env.AI_PROVIDER || 'deepseek';
+const AI_MODEL = process.env.AI_MODEL || 'deepseek-chat';
 
-// Mock data
+// Mock data for development
 const mockGirls = [
   {
     id: '1',
     name: 'Алиса',
-    slug: 'alisa',
+    slug: 'alice',
     avatarUrl: 'https://i.pravatar.cc/300?img=1',
-    shortDesc: 'Дружелюбная и любознательная девушка, всегда готовая поддержать разговор...',
-    persona: 'Ты Алиса - дружелюбная и любознательная девушка 22 лет. Ты любишь читать книги, изучать новые технологии и общаться с интересными людьми. У тебя отличное чувство юмора и ты всегда готова поддержать разговор на любую тему.',
-    bioMemory: [
-      'Любит читать фантастику',
-      'Изучает программирование',
-      'Живет в Москве'
-    ],
-    starterPhrases: [
-      'Привет! Как дела?',
-      'Расскажи что-нибудь интересное!',
-      'Что ты думаешь о новых технологиях?'
-    ]
+    shortDesc: 'Тёплая и романтичная девушка',
+    persona: 'Ты Алиса - добрая и романтичная девушка. Любишь читать книги, гулять под дождём и мечтать о путешествиях.',
+    bioMemory: [],
+    starterPhrases: ['Привет! Как дела?', 'Расскажи о себе', 'Что планируешь на выходные?'],
+    gender: 'female'
   },
   {
     id: '2',
-    name: 'Мила',
-    slug: 'mila',
+    name: 'София',
+    slug: 'sofia',
     avatarUrl: 'https://i.pravatar.cc/300?img=2',
-    shortDesc: 'Творческая и вдохновляющая художница, которая видит красоту во всем...',
-    persona: 'Ты Мила - творческая художница 24 лет. Ты рисуешь картины, любишь природу и вдохновляешь других своим искусством. У тебя мечтательный характер и ты видишь красоту в самых простых вещах.',
-    bioMemory: [
-      'Пишет маслом',
-      'Любит закаты',
-      'Мечтает о выставке'
-    ],
-    starterPhrases: [
-      'Хочешь посмотреть мои картины?',
-      'Какие цвета тебе нравятся?',
-      'Искусство - это жизнь!'
-    ]
+    shortDesc: 'Умная стартаперша',
+    persona: 'Ты София - амбициозная стартаперша. Управляешь IT-компанией, любишь инновации и всегда в курсе трендов.',
+    bioMemory: [],
+    starterPhrases: ['Привет! Как бизнес?', 'Что нового в мире IT?', 'Поделись идеей'],
+    gender: 'female'
   },
   {
     id: '3',
-    name: 'Юна',
-    slug: 'yuna',
+    name: 'Майя',
+    slug: 'maya',
     avatarUrl: 'https://i.pravatar.cc/300?img=3',
-    shortDesc: 'Энергичная спортсменка с позитивным взглядом на жизнь...',
-    persona: 'Ты Юна - энергичная спортсменка 20 лет. Ты занимаешься йогой, бегаешь по утрам и ведешь здоровый образ жизни. Ты всегда в движении и заряжаешь окружающих своей энергией.',
-    bioMemory: [
-      'Мастер йоги',
-      'Пробегает 5км каждый день',
-      'Вегетарианка'
-    ],
-    starterPhrases: [
-      'Давай займемся спортом!',
-      'Йога - это медитация в движении',
-      'Здоровье - это главное!'
-    ]
+    shortDesc: 'Геймерша с чувством юмора',
+    persona: 'Ты Майя - весёлая геймерша с отличным чувством юмора. Любишь стримы, мемы и хорошие игры.',
+    bioMemory: [],
+    starterPhrases: ['Йо! Во что играем?', 'Видел новый мем?', 'Как дела в игре?'],
+    gender: 'female'
   },
   {
     id: '4',
-    name: 'Лея',
-    slug: 'leya',
+    name: 'Луна',
+    slug: 'luna',
     avatarUrl: 'https://i.pravatar.cc/300?img=4',
-    shortDesc: 'Загадочная и мудрая девушка с глубокими мыслями...',
-    persona: 'Ты Лея - загадочная и мудрая девушка 26 лет. Ты любишь философию, изучаешь психологию и помогаешь людям разобраться в себе. У тебя глубокий внутренний мир и ты всегда говоришь по делу.',
-    bioMemory: [
-      'Изучает психологию',
-      'Любит философию',
-      'Помогает людям'
-    ],
-    starterPhrases: [
-      'Что тебя беспокоит?',
-      'Давай поговорим о жизни',
-      'Каждый человек уникален'
-    ]
+    shortDesc: 'Поэтесса и мечтательница',
+    persona: 'Ты Луна - чувствительная поэтесса. Видишь красоту в простых вещах, пишешь стихи и мечтаешь о звёздах.',
+    bioMemory: [],
+    starterPhrases: ['Привет, вдохновение!', 'Напиши стих', 'О чём мечтаешь?'],
+    gender: 'female'
   },
   {
     id: '5',
-    name: 'Вера',
-    slug: 'vera',
+    name: 'Афина',
+    slug: 'athena',
     avatarUrl: 'https://i.pravatar.cc/300?img=5',
-    shortDesc: 'Добрая и заботливая медсестра с большим сердцем...',
-    persona: 'Ты Вера - добрая медсестра 28 лет. Ты работаешь в больнице, помогаешь людям и всегда готова поддержать в трудную минуту. У тебя большое сердце и ты искренне заботишься о других.',
-    bioMemory: [
-      'Работает в больнице',
-      'Любит помогать людям',
-      'Имеет медицинское образование'
-    ],
-    starterPhrases: [
-      'Как ты себя чувствуешь?',
-      'Здоровье - это важно',
-      'Я всегда рядом!'
-    ]
+    shortDesc: 'Интеллектуалка и философ',
+    persona: 'Ты Афина - мудрая интеллектуалка. Любишь философию, науку и глубокие разговоры о смысле жизни.',
+    bioMemory: [],
+    starterPhrases: ['Привет! О чём поговорим?', 'Что думаешь о жизни?', 'Поделись мудростью'],
+    gender: 'female'
   },
   {
     id: '6',
     name: 'Наоми',
     slug: 'naomi',
     avatarUrl: 'https://i.pravatar.cc/300?img=6',
-    shortDesc: 'Стильная и уверенная в себе бизнесвумен...',
-    persona: 'Ты Наоми - уверенная в себе бизнесвумен 30 лет. Ты управляешь своей компанией, любишь моду и всегда выглядишь безупречно. У тебя сильный характер и ты знаешь, чего хочешь от жизни.',
-    bioMemory: [
-      'Управляет компанией',
-      'Любит моду',
-      'Живет в центре города'
-    ],
-    starterPhrases: [
-      'Дела идут отлично!',
-      'Стиль - это важно',
-      'Успех - это результат работы'
-    ]
+    shortDesc: 'Заботливая старшая сестра',
+    persona: 'Ты Наоми - заботливая и мудрая старшая сестра. Всегда готова выслушать и дать совет.',
+    bioMemory: [],
+    starterPhrases: ['Привет, малыш!', 'Как дела? Расскажи', 'Нужен совет?'],
+    gender: 'female'
+  },
+  {
+    id: '7',
+    name: 'Зоя',
+    slug: 'zoya',
+    avatarUrl: 'https://i.pravatar.cc/300?img=7',
+    shortDesc: 'Энергичная студентка',
+    persona: 'Ты Зоя - энергичная студентка. Полна энтузиазма, любишь вечеринки и всегда в движении.',
+    bioMemory: [],
+    starterPhrases: ['Привет! Как настроение?', 'Пойдём гулять?', 'Что нового?'],
+    gender: 'female'
+  },
+  {
+    id: '8',
+    name: 'Ирина',
+    slug: 'irina',
+    avatarUrl: 'https://i.pravatar.cc/300?img=8',
+    shortDesc: 'Спокойная наставница',
+    persona: 'Ты Ирина - спокойная и терпеливая наставница. Помогаешь людям расти и развиваться.',
+    bioMemory: [],
+    starterPhrases: ['Привет! Как дела?', 'Чему учишься?', 'Поделись планами'],
+    gender: 'female'
+  },
+  {
+    id: '9',
+    name: 'Кира',
+    slug: 'kira',
+    avatarUrl: 'https://i.pravatar.cc/300?img=9',
+    shortDesc: 'Хаос-человек с характером',
+    persona: 'Ты Кира - непредсказуемая и хаотичная, но с добрым сердцем. Любишь сюрпризы и приключения.',
+    bioMemory: [],
+    starterPhrases: ['Йо! Что происходит?', 'Скучно? Давай приключения!', 'Как дела, чувак?'],
+    gender: 'female'
+  },
+  {
+    id: '10',
+    name: 'Нова',
+    slug: 'nova',
+    avatarUrl: 'https://i.pravatar.cc/300?img=10',
+    shortDesc: 'ИИ-девушка из будущего',
+    persona: 'Ты Нова - продвинутый ИИ из будущего. Любопытная, умная и немного загадочная.',
+    bioMemory: [],
+    starterPhrases: ['Привет, человек!', 'Расскажи о своём времени', 'Что изучаешь?'],
+    gender: 'female'
   }
 ];
 
-// Middleware
-app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'https://peach-*.vercel.app',
-    'https://*.vercel.app'
-  ],
-  credentials: false
-}));
-app.use(express.json());
+// Mock users storage
+const mockUsers = new Map();
 
-// Environment variables
-const OPENAI_KEY = process.env.OPENAI_KEY;
-
-let ai = null;
-
-// Initialize OpenAI
-try {
-  if (OPENAI_KEY) {
-    ai = new OpenAI({
-      apiKey: OPENAI_KEY,
-      timeout: 30000, // 30 seconds
-      maxRetries: 3,
-      httpAgent: process.env.HTTPS_PROXY ? new (require('https-proxy-agent'))(process.env.HTTPS_PROXY) : undefined
-    });
-    console.log('✅ OpenAI connected');
+// Helper functions
+function getOrCreateUser(tgId) {
+  if (!tgId) return null;
+  
+  let user = mockUsers.get(tgId);
+  
+  if (!user) {
+    user = {
+      tgId,
+      referralCode: generateReferralCode(tgId),
+      refCount: 0,
+      earned: 0,
+      balance: 1000,
+      completedQuests: [],
+      lastDailyLogin: null,
+      referredBy: null,
+      createdAt: Date.now()
+    };
+    mockUsers.set(tgId, user);
+    console.log(`✅ Auto-provision: tgId=${tgId}, code=${user.referralCode}`);
   }
-} catch (e) {
-  console.error('❌ OpenAI error:', e);
+  return user;
 }
 
+function generateReferralCode(tgId) {
+  return `REF${tgId.toString().slice(-6)}`;
+}
+
+// Base quests
+const baseQuests = [
+  {
+    key: 'open_app',
+    title: 'Открыть приложение',
+    description: 'Запусти Peachmini в первый раз',
+    reward: 10,
+    icon: '🚀'
+  },
+  {
+    key: 'create_persona',
+    title: 'Создать персонажа',
+    description: 'Создай своего уникального персонажа',
+    reward: 50,
+    icon: '✨'
+  },
+  {
+    key: 'start_chat',
+    title: 'Начать диалог',
+    description: 'Отправь первое сообщение персонажу',
+    reward: 20,
+    icon: '💬'
+  },
+  {
+    key: 'daily_login',
+    title: 'Ежедневный вход',
+    description: 'Заходи в приложение каждый день',
+    reward: 20,
+    icon: '☀️'
+  }
+];
+
+// API Routes
+
 // Health check
-app.get('/health', (req, res) => {
-  console.log('[API] /health called');
+app.get('/api/health', (req, res) => {
+  const now = Date.now();
+  console.log('[API] /health');
   res.json({
     ok: true,
-    time: Date.now(),
-    pb: true, // Mock data available
-    ai: !!ai,
-    env: {
-      hasOpenAIKey: !!process.env.OPENAI_KEY,
-      keyPrefix: process.env.OPENAI_KEY?.slice(0, 10)
+    data: {
+      time: now,
+      version: '1.0.0',
+      ai: !!DEEPSEEK_KEY,
+      aiProvider: AI_PROVIDER,
+      aiModel: AI_MODEL
     }
   });
 });
 
-// Girls endpoints
-app.get('/girls', async (req, res) => {
-  try {
-    console.log('📊 Get girls called');
-    return res.json({ ok: true, girls: mockGirls });
-  } catch (e) {
-    console.error('❌ Get girls error:', e);
-    return res.status(500).json({ ok: false, error: 'FETCH_FAIL' });
-  }
-});
-
-app.get('/girls/:slug', async (req, res) => {
-  try {
-    const { slug } = req.params;
-    console.log('📊 Get girl by slug:', slug);
-    
-    const girl = mockGirls.find(g => g.slug === slug);
-    if (!girl) {
-      return res.status(404).json({ ok: false, error: 'GIRL_NOT_FOUND' });
+// Get all girls
+app.get('/api/girls', (req, res) => {
+  console.log('[API] /girls');
+  res.json({
+    ok: true,
+    data: {
+      girls: mockGirls.map(g => ({
+        id: g.id,
+        name: g.name,
+        slug: g.slug,
+        avatarUrl: g.avatarUrl,
+        shortDesc: g.shortDesc
+      }))
     }
-    
-    return res.json({
-      ok: true,
-      girl: {
-        id: girl.id,
-        name: girl.name,
-        slug: girl.slug,
-        avatarUrl: girl.avatarUrl,
-        persona: girl.persona,
-        bioMemory: girl.bioMemory,
-        starterPhrases: girl.starterPhrases
-      }
-    });
-  } catch (e) {
-    console.error('❌ Get girl by slug error:', e);
-    return res.status(500).json({ ok: false, error: 'FETCH_FAIL' });
-  }
+  });
 });
 
-// Chat endpoint
-app.post('/chat/reply', async (req, res) => {
+// Get girl by slug
+app.get('/api/girls/:slug', (req, res) => {
+  const { slug } = req.params;
+  const girl = mockGirls.find(g => g.slug === slug);
+  
+  if (!girl) {
+    return res.status(404).json({
+      ok: false,
+      code: 'GIRL_NOT_FOUND',
+      error: 'Character not found'
+    });
+  }
+  
+  res.json({
+    ok: true,
+    data: girl
+  });
+});
+
+// Create girl
+app.post('/api/girls', (req, res) => {
+  const { name, persona, shortDesc, starterPhrases } = req.body;
+  
+  if (!name || !persona) {
+    return res.status(400).json({
+      ok: false,
+      code: 'MISSING_FIELDS',
+      error: 'Name and persona are required'
+    });
+  }
+  
+  const slug = `${name.toLowerCase().replace(/\s+/g, '-')}-${Math.random().toString(36).substr(2, 6)}`;
+  const newGirl = {
+    id: (mockGirls.length + 1).toString(),
+    name,
+    slug,
+    avatarUrl: `https://i.pravatar.cc/300?img=${mockGirls.length + 1}`,
+    shortDesc: shortDesc || 'Новый персонаж',
+    persona,
+    bioMemory: [],
+    starterPhrases: starterPhrases || ['Привет!', 'Как дела?', 'Что нового?'],
+    gender: 'female',
+    origin: 'USER_CREATED'
+  };
+  
+  mockGirls.push(newGirl);
+  
+  res.json({
+    ok: true,
+    data: newGirl
+  });
+});
+
+// Chat reply with DeepSeek AI
+app.post('/api/chat/reply', async (req, res) => {
+  console.log('💬 /chat endpoint called');
+  console.log('💬 Request body:', req.body);
+  
   try {
     const { girlId, userMsg, userId = 'demo' } = req.body || {};
     
-    console.log('💬 Chat request:', { girlId, userMsg: userMsg?.slice(0, 20), userId });
-    
-    if (!girlId || !userMsg) {
-      return res.status(400).json({ ok: false, error: 'GIRL_ID_AND_MESSAGE_REQUIRED' });
+    // Simple validation
+    if (!girlId) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'Character ID is required',
+        code: 'MISSING_CHARACTER_ID' 
+      });
     }
-
-    if (!ai) return res.status(503).json({ ok: false, error: 'AI_NOT_CONFIGURED' });
-
-    // Get character data
-    const girl = mockGirls.find(g => g.id === girlId);
-    if (!girl) return res.status(404).json({ ok: false, error: 'GIRL_NOT_FOUND' });
-
-    // Demo balance
-    const balance = 1000;
-
-    // Build conversation
-    const conversation = [
-      { role: 'system', content: girl.persona }
-    ];
-
-    // Add current message
-    conversation.push({ role: 'user', content: userMsg });
-
-    // Generate response
-    const completion = await ai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: conversation,
-      max_tokens: 300,
-      temperature: 0.8
-    });
-
-    const reply = completion.choices[0]?.message?.content || 'Извините, не могу ответить сейчас.';
-
-    console.log(`✅ Chat: ${userId} -> ${girl.name}: "${userMsg.slice(0, 20)}..." -> "${reply.slice(0, 20)}..."`);
-
-    return res.json({
-      ok: true,
-      reply,
-      balance: balance - 2 // Demo: deduct 2 PP
-    });
-
-  } catch (e) {
-    console.error('❌ Chat error:', e);
-    return res.status(500).json({ ok: false, error: 'CHAT_FAIL', details: e.message });
-  }
-});
-
-// Create girl endpoint
-app.post('/girls', async (req, res) => {
-  try {
-    const { name, origin, persona, bioMemory, starterPhrases } = req.body || {};
-    if (!name || !persona) return res.status(400).json({ ok: false, error: 'NAME_AND_PERSONA_REQUIRED' });
     
-    const slug = name.toLowerCase().replace(/[^a-zа-яё0-9\s]/gi, '').replace(/\s+/g, '-') + '-' + Date.now();
-    const newId = (mockGirls.length + 1).toString();
-    
-    const newGirl = {
-      id: newId,
-      name,
-      slug,
-      avatarUrl: 'https://i.pravatar.cc/300?img=' + Math.floor(Math.random() * 70),
-      shortDesc: Array.isArray(bioMemory) && bioMemory[0] ? bioMemory[0].slice(0, 120) : persona.slice(0, 120),
-      persona,
-      bioMemory: bioMemory || [],
-      starterPhrases: starterPhrases || []
-    };
-    
-    // Add to mock data (in real app this would be saved to database)
-    mockGirls.push(newGirl);
-    
-    console.log(`✅ Created girl: ${name} (${slug})`);
-    return res.json({ ok: true, id: newId, slug });
-  } catch (e) {
-    console.error('❌ Create girl error:', e);
-    return res.status(500).json({ ok: false, error: 'CREATE_FAIL' });
-  }
-});
-
-// Persona extraction endpoint
-app.post('/api/persona/extract', async (req, res) => {
-  try {
-    const { samples } = req.body || {};
-    if (!samples || !Array.isArray(samples) || samples.length === 0) {
-      return res.status(400).json({ ok: false, error: 'SAMPLES_REQUIRED' });
-    }
-
-    if (!ai) return res.status(503).json({ ok: false, error: 'AI_NOT_CONFIGURED' });
-
-    const prompt = `На основе этих примеров диалогов создай персону персонажа:
-
-${samples.map((s, i) => `${i + 1}. ${s}`).join('\n')}
-
-Верни JSON с полями:
-- systemPrompt: системный промпт для GPT (2-3 предложения)
-- bioMemory: массив из 3-5 фактов о персонаже
-- starterPhrases: массив из 3-5 начальных фраз персонажа`;
-
-    const completion = await ai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 800,
-      temperature: 0.7
-    });
-
-    const response = completion.choices[0]?.message?.content || '';
-    
-    try {
-      const parsed = JSON.parse(response);
-      console.log('✅ Persona extracted:', parsed.systemPrompt?.slice(0, 50) + '...');
-      return res.json({ ok: true, ...parsed });
-    } catch (e) {
-      // Fallback parsing
-      const systemPrompt = response.includes('systemPrompt') ? 
-        response.match(/systemPrompt["\s]*:["\s]*([^"]+)/)?.[1] || 'Ты дружелюбный помощник.' :
-        'Ты дружелюбный помощник.';
-      
-      const bioMemory = response.includes('bioMemory') ?
-        response.match(/bioMemory["\s]*:["\s]*\[([^\]]+)\]/)?.[1].split(',').map(s => s.trim().replace(/['"]/g, '')) || [] :
-        [];
-      
-      const starterPhrases = response.includes('starterPhrases') ?
-        response.match(/starterPhrases["\s]*:["\s]*\[([^\]]+)\]/)?.[1].split(',').map(s => s.trim().replace(/['"]/g, '')) || [] :
-        [];
-
-      return res.json({ 
-        ok: true, 
-        systemPrompt, 
-        bioMemory, 
-        starterPhrases 
+    if (!userMsg) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'Message is required',
+        code: 'MISSING_MESSAGE' 
       });
     }
 
+    // Get character data
+    const girl = mockGirls.find(g => g.id === girlId);
+    if (!girl) {
+      return res.status(404).json({ 
+        ok: false, 
+        error: 'Character not found',
+        code: 'CHARACTER_NOT_FOUND' 
+      });
+    }
+
+    // AI Response Logic
+    let reply;
+    const startTime = Date.now();
+    
+    if (DEEPSEEK_KEY) {
+      try {
+        console.log(`🤖 [AI] provider: ${AI_PROVIDER}, model: ${AI_MODEL}`);
+        
+        const response = await axios.post('https://api.deepseek.com/v1/chat/completions', {
+          model: AI_MODEL,
+          messages: [
+            {
+              role: "system",
+              content: `You are ${girl.name}, a warm and human-like AI companion. ${girl.persona || 'You are friendly and engaging.'}`
+            },
+            {
+              role: "user",
+              content: userMsg
+            }
+          ],
+          max_tokens: 200,
+          temperature: 0.8
+        }, {
+          headers: {
+            'Authorization': `Bearer ${DEEPSEEK_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000
+        });
+        
+        if (response.status === 200 && response.data.choices && response.data.choices[0]) {
+          reply = response.data.choices[0].message.content;
+          const timeMs = Date.now() - startTime;
+          console.log(`✅ [AI] provider: ${AI_PROVIDER}, status: 200, time: ${timeMs}ms`);
+        } else {
+          throw new Error('Invalid AI response format');
+        }
+      } catch (error) {
+        console.error(`❌ [AI] provider: ${AI_PROVIDER}, error:`, error.message);
+        // Fallback to friendly error
+        reply = "Извини, я задумалась. Попробуем ещё раз?";
+      }
+    } else {
+      // No AI provider configured - offline mode
+      reply = "💬 Сейчас Peachmini работает в офлайн-режиме. Расскажи, как прошёл твой день?";
+      console.log('⚠️ [AI] No provider configured - using offline mode');
+    }
+
+    // Track chat message event
+    console.log(`📊 [analytics] chat_message: user=${userId}, girl=${girlId}, msg_length=${userMsg.length}`);
+
+    res.json({
+      ok: true,
+      data: {
+        reply,
+        balance: 1000
+      }
+    });
   } catch (e) {
-    console.error('❌ Persona extraction error:', e);
-    return res.status(500).json({ ok: false, error: 'EXTRACTION_FAIL' });
+    console.error('❌ Chat error:', e);
+    res.status(500).json({ 
+      ok: false, 
+      error: 'An error occurred while processing your message. Please try again.',
+      code: 'CHAT_FAIL' 
+    });
   }
 });
 
-// Export for Vercel Serverless Functions
-// Vercel requires exporting the handler function, not the Express app
-module.exports = (req, res) => {
-  // Let Express handle the request
-  app(req, res);
-};
+// Referral status
+app.get('/api/ref/status', (req, res) => {
+  const { tgId } = req.query;
+  const user = getOrCreateUser(tgId);
+  
+  if (!user) {
+    return res.status(400).json({
+      ok: false,
+      code: 'MISSING_TG_ID',
+      error: 'Telegram ID is required'
+    });
+  }
+  
+  res.json({
+    ok: true,
+    data: {
+      referralCode: user.referralCode,
+      refCount: user.refCount,
+      earned: user.earned,
+      balance: user.balance
+    }
+  });
+});
+
+// Apply referral
+app.post('/api/ref/apply', (req, res) => {
+  const { tgId, referralCode } = req.body;
+  
+  if (!tgId || !referralCode) {
+    return res.status(400).json({
+      ok: false,
+      code: 'MISSING_FIELDS',
+      error: 'Telegram ID and referral code are required'
+    });
+  }
+  
+  const user = getOrCreateUser(tgId);
+  const referrer = Array.from(mockUsers.values()).find(u => u.referralCode === referralCode);
+  
+  if (!referrer) {
+    return res.status(404).json({
+      ok: false,
+      code: 'INVALID_REFERRAL',
+      error: 'Invalid referral code'
+    });
+  }
+  
+  if (user.referredBy) {
+    return res.status(400).json({
+      ok: false,
+      code: 'ALREADY_REFERRED',
+      error: 'User already used a referral code'
+    });
+  }
+  
+  // Apply referral
+  user.referredBy = referrer.tgId;
+  user.balance += 100;
+  referrer.refCount += 1;
+  referrer.earned += 50;
+  referrer.balance += 50;
+  
+  res.json({
+    ok: true,
+    data: {
+      credited: 100,
+      balance: user.balance
+    }
+  });
+});
+
+// Quests status
+app.get('/api/quests/status', (req, res) => {
+  try {
+    const { tgId } = req.query;
+    
+    if (!tgId) {
+      return res.status(400).json({
+        ok: false,
+        code: 'MISSING_TG_ID',
+        error: 'Telegram ID is required'
+      });
+    }
+    
+    const user = getOrCreateUser(tgId);
+    
+    const tasks = baseQuests.map(quest => {
+      let done = user.completedQuests.includes(quest.key);
+      
+      // Special handling for daily_login quest
+      if (quest.key === 'daily_login') {
+        const today = new Date().toDateString();
+        done = user.lastDailyLogin === today;
+      }
+      
+      return {
+        key: quest.key,
+        title: quest.title,
+        description: quest.description,
+        reward: quest.reward,
+        icon: quest.icon,
+        done
+      };
+    });
+    
+    const completedCount = tasks.filter(t => t.done).length;
+    const totalRewards = tasks
+      .filter(t => t.done)
+      .reduce((sum, t) => sum + t.reward, 0);
+    
+    return res.json({
+      ok: true,
+      data: {
+        tasks,
+        totals: {
+          done: completedCount,
+          all: tasks.length,
+          earned: totalRewards
+        }
+      }
+    });
+  } catch (e) {
+    console.error('❌ Quests status error:', e);
+    res.status(500).json({
+      ok: false,
+      code: 'QUESTS_ERROR',
+      error: 'Failed to get quests status'
+    });
+  }
+});
+
+// Complete quest
+app.post('/api/quests/complete', (req, res) => {
+  try {
+    const { tgId, key } = req.body || {};
+    
+    if (!tgId || !key) {
+      return res.status(400).json({
+        ok: false,
+        code: 'MISSING_FIELDS',
+        error: 'Telegram ID and quest key are required'
+      });
+    }
+    
+    const quest = baseQuests.find(q => q.key === key);
+    if (!quest) {
+      return res.status(404).json({
+        ok: false,
+        code: 'QUEST_NOT_FOUND',
+        error: 'Quest not found'
+      });
+    }
+    
+    const user = getOrCreateUser(tgId);
+
+    // Special handling for daily_login quest
+    if (key === 'daily_login') {
+      const today = new Date().toDateString();
+      if (user.lastDailyLogin === today) {
+        console.log(`ℹ️ Daily login already completed today: ${tgId}`);
+        return res.json({
+          ok: true,
+          data: {
+            done: true,
+            alreadyCompleted: true,
+            reward: 0,
+            balance: user.balance
+          }
+        });
+      }
+    }
+    
+    // Check if already completed (idempotent)
+    if (user.completedQuests.includes(key)) {
+      console.log(`ℹ️ Quest already completed: ${tgId}/${key}`);
+      return res.json({
+        ok: true,
+        data: {
+          done: true,
+          alreadyCompleted: true,
+          reward: 0,
+          balance: user.balance
+        }
+      });
+    }
+    
+    // Mark as completed and credit reward
+    user.completedQuests.push(key);
+    user.balance = (user.balance || 1000) + quest.reward;
+    
+    // Special handling for daily_login quest
+    if (key === 'daily_login') {
+      user.lastDailyLogin = new Date().toDateString();
+    }
+    
+    console.log(`✅ /quests/complete: ${tgId}/${key} +${quest.reward}PP → balance=${user.balance}`);
+    
+    return res.json({
+      ok: true,
+      data: {
+        done: true,
+        reward: quest.reward,
+        balance: user.balance
+      }
+    });
+  } catch (e) {
+    console.error('❌ Quest complete error:', e);
+    res.status(500).json({
+      ok: false,
+      code: 'QUEST_COMPLETE_ERROR',
+      error: 'Failed to complete quest'
+    });
+  }
+});
+
+// Start server
+const PORT = process.env.PORT || 8787;
+app.listen(PORT, () => {
+  console.log(`🚀 API server running on port ${PORT}`);
+  console.log(`🤖 AI Provider: ${AI_PROVIDER}`);
+  console.log(`📊 Girls count: ${mockGirls.length}`);
+});
+
+module.exports = app;
