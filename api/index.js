@@ -546,6 +546,8 @@ app.post('/chat/reply', async (req, res) => {
     conversation.push({ role: 'user', content: userMsg });
 
     // Generate response with 30s timeout
+    console.log(`🤖 OpenAI request: model=gpt-4o-mini, messages=${conversation.length}`);
+    
     const completion = await Promise.race([
       ai.chat.completions.create({
         model: 'gpt-4o-mini',
@@ -558,6 +560,8 @@ app.post('/chat/reply', async (req, res) => {
       )
     ]);
 
+    console.log(`🤖 OpenAI response:`, JSON.stringify(completion, null, 2));
+    
     const reply = completion.choices[0]?.message?.content || 'Извините, не могу ответить сейчас.';
 
     console.log(`✅ /chat: OK, reply=${reply.slice(0, 40)}...`);
@@ -575,6 +579,14 @@ app.post('/chat/reply', async (req, res) => {
 
   } catch (e) {
     console.error('❌ Chat error:', e);
+    console.error('❌ Error details:', {
+      message: e.message,
+      stack: e.stack,
+      name: e.name,
+      userId,
+      girlId,
+      userMsg: userMsg?.slice(0, 50)
+    });
     
     if (e.message === 'Request timeout') {
       console.log(`⏱️ /chat: timeout for ${userId}`);
