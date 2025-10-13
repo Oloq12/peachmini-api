@@ -1,7 +1,7 @@
 // Vercel Serverless API with Mock Data
 const express = require('express');
 const cors = require('cors');
-const { OpenAI } = require('openai');
+const axios = require('axios');
 
 const app = express();
 
@@ -223,24 +223,37 @@ app.use(express.json());
 
 // Environment variables
 const OPENAI_KEY = process.env.OPENAI_KEY;
+const DEEPSEEK_KEY = process.env.DEEPSEEK_KEY;
+const AI_PROVIDER = process.env.AI_PROVIDER || 'deepseek';
+const AI_MODEL = process.env.AI_MODEL || 'deepseek-chat';
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
 let ai = null;
 let botApi = null;
 
-// Initialize OpenAI
+// Initialize AI Provider
 try {
-  if (OPENAI_KEY) {
-    ai = new OpenAI({
-      apiKey: OPENAI_KEY,
-      timeout: 30000, // 30 seconds
-      maxRetries: 3,
-      httpAgent: process.env.HTTPS_PROXY ? new (require('https-proxy-agent'))(process.env.HTTPS_PROXY) : undefined
-    });
+  if (AI_PROVIDER === 'deepseek' && DEEPSEEK_KEY) {
+    ai = {
+      provider: 'deepseek',
+      key: DEEPSEEK_KEY,
+      model: AI_MODEL,
+      baseURL: 'https://api.deepseek.com/v1'
+    };
+    console.log('✅ DeepSeek AI connected');
+  } else if (AI_PROVIDER === 'openai' && OPENAI_KEY) {
+    ai = {
+      provider: 'openai',
+      key: OPENAI_KEY,
+      model: AI_MODEL || 'gpt-4o-mini',
+      baseURL: 'https://api.openai.com/v1'
+    };
     console.log('✅ OpenAI connected');
+  } else {
+    console.log('⚠️ No AI provider configured - using fallback responses');
   }
 } catch (e) {
-  console.error('❌ OpenAI error:', e);
+  console.error('❌ AI initialization error:', e);
 }
 
 // Initialize Telegram Bot API client
@@ -314,17 +327,56 @@ app.post('/chat/reply', (req, res) => {
       });
     }
 
-    // Fallback response (OpenAI blocked in region)
-    const replies = [
-      `Привет! Я ${girl.name}. Как дела?`,
-      `О, привет! Я ${girl.name}. Что расскажешь?`,
-      `Здравствуй! Я ${girl.name}. Как настроение?`,
-      `Привет-привет! Я ${girl.name}. Что нового?`
-    ];
+    // AI Response Logic
+    let reply;
     
-    const reply = replies[Math.floor(Math.random() * replies.length)];
-
-    console.log(`✅ /chat: OK, reply=${reply.slice(0, 40)}...`);
+    if (ai && ai.key) {
+      try {
+        console.log(`🤖 [AI] provider: ${ai.provider}, model: ${ai.model}`);
+        
+        const response = await axios.post(`${ai.baseURL}/chat/completions`, {
+          model: ai.model,
+          messages: [
+            {
+              role: "system",
+              content: `You are ${girl.name}, a warm and human-like AI companion. ${girl.persona || 'You are friendly and engaging.'}`
+            },
+            {
+              role: "user",
+              content: userMsg
+            }
+          ],
+          max_tokens: 200,
+          temperature: 0.8
+        }, {
+          headers: {
+            'Authorization': `Bearer ${ai.key}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000
+        });
+        
+        if (response.status === 200 && response.data.choices && response.data.choices[0]) {
+          reply = response.data.choices[0].message.content;
+          console.log(`✅ [AI] provider: ${ai.provider}, status: 200, reply=${reply.slice(0, 40)}...`);
+        } else {
+          throw new Error('Invalid AI response format');
+        }
+      } catch (error) {
+        console.error(`❌ [AI] provider: ${ai.provider}, error:`, error.message);
+        // Fallback to predefined responses
+        const fallbackReplies = [
+          `Прости, я задумалась 😅 — попробуй написать ещё раз.`,
+          `Хм, что-то я растерялась... Можешь повторить? 😊`,
+          `Ой, у меня сейчас проблемы с интернетом. Попробуй ещё раз! 🌐`
+        ];
+        reply = fallbackReplies[Math.floor(Math.random() * fallbackReplies.length)];
+      }
+    } else {
+      // No AI provider configured - offline mode
+      reply = "💬 Сейчас Peachmini работает в офлайн-режиме (без AI). Привет!";
+      console.log('⚠️ [AI] No provider configured - using offline mode');
+    }
 
     // Track chat message event
     console.log(`📊 [analytics] chat_message: user=${userId}, girl=${girlId}, msg_length=${userMsg.length}`);
@@ -371,9 +423,13 @@ app.get('/health', (req, res) => {
       lastCheck: lastHealthCheck,
       pb: true, // Mock data available
       ai: !!ai,
+      aiProvider: ai?.provider || 'none',
+      aiModel: ai?.model || 'none',
       env: {
         hasOpenAIKey: !!process.env.OPENAI_KEY,
-        keyPrefix: process.env.OPENAI_KEY?.slice(0, 10)
+        hasDeepSeekKey: !!process.env.DEEPSEEK_KEY,
+        aiProvider: AI_PROVIDER,
+        keyPrefix: process.env.OPENAI_KEY?.slice(0, 10) || process.env.DEEPSEEK_KEY?.slice(0, 10)
       }
     }
   });
