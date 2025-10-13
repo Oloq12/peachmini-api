@@ -5,6 +5,12 @@ export default function Settings() {
 
   const menuItems = [
     {
+      icon: '🍑',
+      title: 'Landing',
+      description: 'О Peachmini',
+      path: '/landing'
+    },
+    {
       icon: '🔗',
       title: 'Реферальная программа',
       description: 'Приглашайте друзей и зарабатывайте',

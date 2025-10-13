@@ -10,6 +10,7 @@ import Referrals from './pages/Referrals';
 import Quests from './pages/Quests';
 import Character from './pages/Character';
 import ChatScreen from './components/chat/ChatScreen';
+import Landing from './pages/Landing';
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/referrals" element={<Referrals />} />
           <Route path="/quests" element={<Quests />} />
           <Route path="/c/:slug" element={<Character />} />
+          <Route path="/landing" element={<Landing />} />
         </Routes>
         <BottomNav />
       </div>
