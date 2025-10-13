@@ -277,13 +277,22 @@ app.post('/chat/reply', (req, res) => {
   console.log('💬 /chat endpoint called');
   console.log('💬 Request body:', req.body);
   
-  res.json({
-    ok: true,
-    data: {
-      reply: 'Привет! Я Алиса. Как дела?',
-      balance: 1000
-    }
-  });
+  try {
+    res.json({
+      ok: true,
+      data: {
+        reply: 'Привет! Я Алиса. Как дела?',
+        balance: 1000
+      }
+    });
+  } catch (e) {
+    console.error('❌ Chat error:', e);
+    res.status(500).json({ 
+      ok: false, 
+      error: 'An error occurred while processing your message. Please try again.',
+      code: 'CHAT_FAIL' 
+    });
+  }
 });
 
 // Alternative chat endpoint
