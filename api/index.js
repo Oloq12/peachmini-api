@@ -470,6 +470,11 @@ app.get('/girls/:slug', async (req, res) => {
   }
 });
 
+// Test endpoint
+app.post('/api/test', (req, res) => {
+  res.json({ ok: true, message: 'Test endpoint works' });
+});
+
 // Chat endpoint
 app.post('/api/chat/reply', async (req, res) => {
   try {
