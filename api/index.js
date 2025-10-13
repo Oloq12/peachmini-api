@@ -476,7 +476,7 @@ app.post('/api/test', (req, res) => {
 });
 
 // Chat endpoint
-app.post('/api/chat/reply', async (req, res) => {
+app.post('/chat/reply', async (req, res) => {
   try {
     console.log('💬 /chat endpoint called');
     console.log('💬 Request body:', JSON.stringify(req.body, null, 2));
