@@ -4,7 +4,7 @@ echo "🧪 MULTI-PROVIDER AI ACTIVATION TEST"
 echo "===================================="
 echo ""
 
-API_BASE="https://peach-mini-clean-moysq1g2j-trsoyoleg-4006s-projects.vercel.app"
+API_BASE="https://peach-mini-clean-bknd8c2fy-trsoyoleg-4006s-projects.vercel.app"
 
 echo "🔗 API URL: $API_BASE"
 echo ""
