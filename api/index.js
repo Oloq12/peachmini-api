@@ -728,34 +728,28 @@ app.get('/health', (req, res) => {
 
   console.log('[API] /health');
 
-  // Get AI router status
-  const routerStatus = getRouterStatus();
+  // Get version from package.json or default to 'dev'
+  const packageJson = require('./package.json');
+  const version = packageJson?.version || 'dev';
+
+  // AI Router status
+  const aiRouter = {
+    active: !!(process.env.DEEPSEEK_KEY || process.env.OPENROUTER_KEY || process.env.GROQ_KEY),
+    primary: process.env.AI_PRIMARY || 'deepseek',
+    secondary: process.env.AI_SECONDARY || null,
+    ab: Number(process.env.AI_AB_TEST || 0),
+    available: {
+      deepseek: Boolean(process.env.DEEPSEEK_KEY),
+      openrouter: Boolean(process.env.OPENROUTER_KEY),
+      groq: Boolean(process.env.GROQ_KEY)
+    }
+  };
 
   res.json({
     ok: true,
-    data: {
-      time: now,
-      version: "3.0.0",
-      lastCheck: lastHealthCheck,
-      pb: true, // Mock data available
-      ai: routerStatus.primaryAvailable || routerStatus.secondaryAvailable,
-      aiProvider: routerStatus.config.primary,
-      aiModel: routerStatus.config.modelPrimary,
-      aiRouter: {
-        config: routerStatus.config,
-        availableProviders: routerStatus.availableProviders,
-        primaryAvailable: routerStatus.primaryAvailable,
-        secondaryAvailable: routerStatus.secondaryAvailable
-      },
-      env: {
-        hasOpenAIKey: !!process.env.OPENAI_KEY,
-        hasDeepSeekKey: !!process.env.DEEPSEEK_KEY,
-        hasOpenRouterKey: !!process.env.OPENROUTER_KEY,
-        hasGroqKey: !!process.env.GROQ_KEY,
-        aiProvider: process.env.AI_PRIMARY || 'deepseek',
-        abTestPercent: parseInt(process.env.AI_AB_TEST || '0')
-      }
-    }
+    ts: now,
+    aiRouter,
+    version
   });
 });
 
