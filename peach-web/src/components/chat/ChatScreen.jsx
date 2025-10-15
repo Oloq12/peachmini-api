@@ -40,7 +40,7 @@ export default function ChatScreen() {
       // Загружаем персонажа через API (используем girlId как slug для простоты)
       const girl = await pb.collection('girls').getOne(girlId).catch(async () => {
         // Если не найден по ID, попробуем найти по slug
-        const API_URL = import.meta.env.VITE_API_URL || 'https://unrazed-wendell-pseudocentric.ngrok-free.dev';
+        const API_URL = import.meta.env.VITE_API_URL || 'https://peach-mini-clean-jg98cn7sm-trsoyoleg-4006s-projects.vercel.app';
         const response = await fetch(`${API_URL}/girls/${girlId}`, {
           headers: {
             'ngrok-skip-browser-warning': 'true'

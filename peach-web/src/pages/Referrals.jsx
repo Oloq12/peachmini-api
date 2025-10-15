@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+const API_URL = import.meta.env.VITE_API_URL || 'https://peach-mini-clean-jg98cn7sm-trsoyoleg-4006s-projects.vercel.app';
 
 export default function Referrals() {
   const [loading, setLoading] = useState(true);

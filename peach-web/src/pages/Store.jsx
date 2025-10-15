@@ -52,7 +52,7 @@ export default function Store() {
     });
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+      const API_URL = import.meta.env.VITE_API_URL || 'https://peach-mini-clean-jg98cn7sm-trsoyoleg-4006s-projects.vercel.app';
       const tgId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'demo_user';
       
       const response = await fetch(`${API_URL}/api/payments/createInvoice`, {

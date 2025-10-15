@@ -77,7 +77,7 @@ export default function InspiredTab() {
 
     setLoading(true);
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+      const API_URL = import.meta.env.VITE_API_URL || 'https://peach-mini-clean-jg98cn7sm-trsoyoleg-4006s-projects.vercel.app';
       const response = await fetch(`${API_URL}/api/persona/extract`, {
         method: 'POST',
         headers: { 
@@ -118,7 +118,7 @@ export default function InspiredTab() {
 
     setSaving(true);
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+      const API_URL = import.meta.env.VITE_API_URL || 'https://peach-mini-clean-jg98cn7sm-trsoyoleg-4006s-projects.vercel.app';
       
       // Создаем персонажа через API
       const response = await fetch(`${API_URL}/api/girls`, {

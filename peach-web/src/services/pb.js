@@ -12,7 +12,7 @@ export { pb, PB_URL };
 
 // Функция для получения персонажей
 export async function getCharacters(page = 1, limit = 24) {
-  const API_URL = import.meta.env.VITE_API_URL || 'https://unrazed-wendell-pseudocentric.ngrok-free.dev';
+  const API_URL = import.meta.env.VITE_API_URL || 'https://peach-mini-clean-jg98cn7sm-trsoyoleg-4006s-projects.vercel.app';
   
   console.log('🔵 getCharacters: API_URL =', API_URL, 'page =', page, 'limit =', limit);
   
@@ -55,7 +55,7 @@ export async function getCharacters(page = 1, limit = 24) {
 
 // Функция для получения персонажа по slug
 export async function getCharacterBySlug(slug) {
-  const API_URL = import.meta.env.VITE_API_URL || 'https://unrazed-wendell-pseudocentric.ngrok-free.dev';
+  const API_URL = import.meta.env.VITE_API_URL || 'https://peach-mini-clean-jg98cn7sm-trsoyoleg-4006s-projects.vercel.app';
   
   console.log('🔵 getCharacterBySlug: slug =', slug);
   
@@ -148,7 +148,7 @@ function getMockCharacters() {
 
 // Функция для отправки сообщения в чат
 export async function sendChatMessage(girlId, userMsg, userId = 'demo') {
-  const API_URL = import.meta.env.VITE_API_URL || 'https://unrazed-wendell-pseudocentric.ngrok-free.dev';
+  const API_URL = import.meta.env.VITE_API_URL || 'https://peach-mini-clean-jg98cn7sm-trsoyoleg-4006s-projects.vercel.app';
   
   console.log('🔵 sendChatMessage: girlId =', girlId, 'userMsg =', userMsg);
   

@@ -3,6 +3,9 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 
+// Import AI router
+const { routeGenerate, getRouterStatus } = require('./ai/router');
+
 const app = express();
 
 // Middleware
@@ -327,67 +330,71 @@ app.post('/chat/reply', async (req, res) => {
       });
     }
 
-    // AI Response Logic
-    let reply;
-    
-    if (ai && ai.key) {
-      try {
-        console.log(`🤖 [AI] provider: ${ai.provider}, model: ${ai.model}`);
-        
-        const response = await axios.post(`${ai.baseURL}/chat/completions`, {
-          model: ai.model,
-          messages: [
-            {
-              role: "system",
-              content: `You are ${girl.name}, a warm and human-like AI companion. ${girl.persona || 'You are friendly and engaging.'}`
-            },
-            {
-              role: "user",
-              content: userMsg
-            }
-          ],
-          max_tokens: 200,
-          temperature: 0.8
-        }, {
-          headers: {
-            'Authorization': `Bearer ${ai.key}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 30000
-        });
-        
-        if (response.status === 200 && response.data.choices && response.data.choices[0]) {
-          reply = response.data.choices[0].message.content;
-          console.log(`✅ [AI] provider: ${ai.provider}, status: 200, reply=${reply.slice(0, 40)}...`);
-        } else {
-          throw new Error('Invalid AI response format');
+    // AI Response Logic using Multi-Provider Router
+    const systemPrompt = `You are ${girl.name}, a warm and human-like AI companion. ${girl.persona || 'You are friendly and engaging.'}
+
+Key guidelines:
+- Be warm, empathetic, and conversational
+- Keep responses concise but meaningful (under 200 words)
+- Stay in character as ${girl.name}
+- Be supportive and encouraging
+- Use natural, human-like language
+- Avoid repetitive phrases`;
+
+    // Concatenate character memory with user message
+    const characterMemory = girl.bioMemory ? girl.bioMemory.join('. ') : '';
+    const fullUserMessage = characterMemory ? `${characterMemory}. ${userMsg}` : userMsg;
+
+    const messages = [
+      { role: "user", content: fullUserMessage }
+    ];
+
+    try {
+      const aiResponse = await routeGenerate(systemPrompt, messages);
+      
+      // Track chat message event with AI metadata
+      console.log(`📊 [analytics] chat_message: user=${userId}, girl=${girlId}, msg_length=${userMsg.length}, provider=${aiResponse.chosenProvider}, model=${aiResponse.model}, latency=${aiResponse.latencyMs}ms`);
+
+      res.json({
+        ok: true,
+        data: {
+          reply: aiResponse.text,
+          balance: 1000,
+          meta: {
+            provider: aiResponse.chosenProvider,
+            model: aiResponse.model,
+            latencyMs: aiResponse.latencyMs,
+            usage: aiResponse.usage,
+            abBucket: aiResponse.abBucket
+          }
         }
-      } catch (error) {
-        console.error(`❌ [AI] provider: ${ai.provider}, error:`, error.message);
-        // Fallback to predefined responses
-        const fallbackReplies = [
-          `Прости, я задумалась 😅 — попробуй написать ещё раз.`,
-          `Хм, что-то я растерялась... Можешь повторить? 😊`,
-          `Ой, у меня сейчас проблемы с интернетом. Попробуй ещё раз! 🌐`
-        ];
-        reply = fallbackReplies[Math.floor(Math.random() * fallbackReplies.length)];
-      }
-    } else {
-      // No AI provider configured - offline mode
-      reply = "💬 Сейчас Peachmini работает в офлайн-режиме (без AI). Привет!";
-      console.log('⚠️ [AI] No provider configured - using offline mode');
+      });
+    } catch (error) {
+      console.error('❌ [AI] Router error:', error);
+      
+      // Ultimate fallback
+      const fallbackReplies = [
+        `Прости, я задумалась 😅 — попробуй написать ещё раз.`,
+        `Хм, что-то я растерялась... Можешь повторить? 😊`,
+        `Ой, у меня сейчас проблемы с интернетом. Попробуй ещё раз! 🌐`
+      ];
+      const reply = fallbackReplies[Math.floor(Math.random() * fallbackReplies.length)];
+
+      res.json({
+        ok: true,
+        data: {
+          reply,
+          balance: 1000,
+          meta: {
+            provider: 'fallback',
+            model: 'none',
+            latencyMs: 0,
+            usage: { prompt: 0, completion: 0, total: 0 },
+            abBucket: 'error'
+          }
+        }
+      });
     }
-
-    // Track chat message event
-    console.log(`📊 [analytics] chat_message: user=${userId}, girl=${girlId}, msg_length=${userMsg.length}`);
-
-    res.json({
-      ok: true,
-      data: {
-        reply,
-        balance: 1000
-      }
-    });
   } catch (e) {
     console.error('❌ Chat error:', e);
     res.status(500).json({ 
@@ -416,20 +423,32 @@ app.get('/health', (req, res) => {
   lastHealthCheck = now; // Записываем timestamp
   
   console.log('[API] /health');
+  
+  // Get AI router status
+  const routerStatus = getRouterStatus();
+  
   res.json({
     ok: true,
     data: {
       time: now,
       lastCheck: lastHealthCheck,
       pb: true, // Mock data available
-      ai: !!ai,
-      aiProvider: ai?.provider || 'none',
-      aiModel: ai?.model || 'none',
+      ai: routerStatus.primaryAvailable || routerStatus.secondaryAvailable,
+      aiProvider: routerStatus.config.primary,
+      aiModel: routerStatus.config.modelPrimary,
+      aiRouter: {
+        config: routerStatus.config,
+        availableProviders: routerStatus.availableProviders,
+        primaryAvailable: routerStatus.primaryAvailable,
+        secondaryAvailable: routerStatus.secondaryAvailable
+      },
       env: {
         hasOpenAIKey: !!process.env.OPENAI_KEY,
         hasDeepSeekKey: !!process.env.DEEPSEEK_KEY,
-        aiProvider: AI_PROVIDER,
-        keyPrefix: process.env.OPENAI_KEY?.slice(0, 10) || process.env.DEEPSEEK_KEY?.slice(0, 10)
+        hasOpenRouterKey: !!process.env.OPENROUTER_KEY,
+        hasGroqKey: !!process.env.GROQ_KEY,
+        aiProvider: process.env.AI_PRIMARY || 'deepseek',
+        abTestPercent: parseInt(process.env.AI_AB_TEST || '0')
       }
     }
   });

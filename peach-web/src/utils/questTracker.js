@@ -1,7 +1,7 @@
 // Quest tracking utilities
 import { track } from './analytics';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+const API_URL = import.meta.env.VITE_API_URL || 'https://peach-mini-clean-jg98cn7sm-trsoyoleg-4006s-projects.vercel.app';
 
 // Get user ID from Telegram WebApp
 function getUserId() {
