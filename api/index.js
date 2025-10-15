@@ -771,6 +771,36 @@ app.get('/debug', (req, res) => {
   });
 });
 
+// AI Debug endpoint - returns safe configuration without keys
+app.get('/api/debug/ai', (req, res) => {
+  // Check if debug is disabled
+  if (process.env.DEBUG_DISABLED === '1') {
+    return res.status(404).json({
+      ok: false,
+      error: 'Debug endpoint disabled',
+      code: 'DEBUG_DISABLED'
+    });
+  }
+
+  console.log('[API] /api/debug/ai called');
+
+  res.json({
+    ok: true,
+    data: {
+      primary: process.env.AI_PRIMARY || 'deepseek',
+      secondary: process.env.AI_SECONDARY || null,
+      modelPrimary: process.env.AI_MODEL_PRIMARY || 'deepseek-chat',
+      modelSecondary: process.env.AI_MODEL_SECONDARY || null,
+      ab: Number(process.env.AI_AB_TEST || 0),
+      available: {
+        deepseek: !!process.env.DEEPSEEK_KEY,
+        openrouter: !!process.env.OPENROUTER_KEY,
+        groq: !!process.env.GROQ_KEY
+      }
+    }
+  });
+});
+
 // Debug endpoint to see all environment variables
 app.get('/api/debug-env', (req, res) => {
   console.log('[API] /api/debug-env called');
