@@ -421,7 +421,7 @@ app.post('/chat/reply', async (req, res) => {
   console.log('💬 Request body:', req.body);
   
   try {
-    const { girlId, userMsg, userId = 'demo' } = req.body || {};
+    const { girlId, userMsg, userId = 'demo', context = [] } = req.body || {};
     
     // Simple validation
     if (!girlId) {
@@ -450,7 +450,221 @@ app.post('/chat/reply', async (req, res) => {
       });
     }
 
-    // AI Response Logic using Multi-Provider Router
+    // ===== INLINE MULTI-PROVIDER AI ROUTER =====
+    
+    // Configuration from environment variables
+    const config = {
+      primary: process.env.AI_PRIMARY || 'deepseek',
+      secondary: process.env.AI_SECONDARY || undefined,
+      modelPrimary: process.env.AI_MODEL_PRIMARY || 'deepseek-chat',
+      modelSecondary: process.env.AI_MODEL_SECONDARY || undefined,
+      temperature: parseFloat(process.env.AI_TEMP || '0.9'),
+      maxTokens: parseInt(process.env.AI_MAX_TOKENS || '512'),
+      abTestPercent: parseInt(process.env.AI_AB_TEST || '0')
+    };
+
+    // Check if provider is available
+    const isProviderAvailable = (provider) => {
+      switch (provider) {
+        case 'deepseek': return !!process.env.DEEPSEEK_KEY;
+        case 'openrouter': return !!process.env.OPENROUTER_KEY;
+        case 'groq': return !!process.env.GROQ_KEY;
+        default: return false;
+      }
+    };
+
+    // A/B testing logic
+    const shouldUseABTest = () => {
+      if (config.abTestPercent <= 0) return false;
+      return Math.random() * 100 < config.abTestPercent;
+    };
+
+    // Generate offline stub
+    const generateOfflineStub = () => ({
+      text: "💬 Сейчас офлайн, но я с тобой. Расскажи, как прошёл твой день?",
+      provider: 'stub',
+      model: 'offline',
+      latencyMs: 0,
+      abBucket: 'offline'
+    });
+
+    // DeepSeek provider
+    const generateDeepSeek = async (messages) => {
+      const startTime = Date.now();
+      
+      const response = await axios.post('https://api.deepseek.com/v1/chat/completions', {
+        model: config.modelPrimary,
+        messages,
+        max_tokens: config.maxTokens,
+        temperature: config.temperature,
+        stream: false
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.DEEPSEEK_KEY}`
+        },
+        timeout: 30000
+      });
+
+      if (!response.data.choices || response.data.choices.length === 0) {
+        throw new Error(`DeepSeek API error: ${response.data.error?.message || 'No response'}`);
+      }
+
+      const text = response.data.choices[0].message.content;
+      const latencyMs = Date.now() - startTime;
+
+      return { text, provider: 'deepseek', model: config.modelPrimary, latencyMs };
+    };
+
+    // OpenRouter provider
+    const generateOpenRouter = async (messages) => {
+      const startTime = Date.now();
+      
+      const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
+        model: config.modelSecondary || 'anthropic/claude-3.5-haiku:beta',
+        messages,
+        max_tokens: config.maxTokens,
+        temperature: config.temperature,
+        stream: false
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENROUTER_KEY}`,
+          'HTTP-Referer': 'https://peach-mini.vercel.app',
+          'X-Title': 'Peach Mini'
+        },
+        timeout: 30000
+      });
+
+      if (!response.data.choices || response.data.choices.length === 0) {
+        throw new Error(`OpenRouter API error: ${response.data.error?.message || 'No response'}`);
+      }
+
+      const text = response.data.choices[0].message.content;
+      const latencyMs = Date.now() - startTime;
+
+      return { text, provider: 'openrouter', model: config.modelSecondary || 'claude-3.5-haiku', latencyMs };
+    };
+
+    // Groq provider
+    const generateGroq = async (messages) => {
+      const startTime = Date.now();
+      
+      const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+        model: config.modelSecondary || 'llama-3.1-70b-versatile',
+        messages,
+        max_tokens: config.maxTokens,
+        temperature: config.temperature,
+        stream: false
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.GROQ_KEY}`
+        },
+        timeout: 30000
+      });
+
+      if (!response.data.choices || response.data.choices.length === 0) {
+        throw new Error(`Groq API error: ${response.data.error?.message || 'No response'}`);
+      }
+
+      const text = response.data.choices[0].message.content;
+      const latencyMs = Date.now() - startTime;
+
+      return { text, provider: 'groq', model: config.modelSecondary || 'llama-3.1-70b', latencyMs };
+    };
+
+    // Main AI generation logic
+    const generateAI = async (systemPrompt, userMessage) => {
+      const startTime = Date.now();
+      
+      // Build messages array
+      const messages = [
+        { role: "system", content: systemPrompt }
+      ];
+      
+      // Add context (last 6 messages)
+      if (context && context.length > 0) {
+        const recentContext = context.slice(-6);
+        messages.push(...recentContext);
+      }
+      
+      // Add user message
+      messages.push({ role: "user", content: userMessage });
+
+      // Check for force parameter
+      const forceProvider = req.query.force;
+      
+      // Determine which provider to use
+      let chosenProvider = config.primary;
+      let abBucket = 'primary';
+      
+      if (forceProvider && isProviderAvailable(forceProvider)) {
+        chosenProvider = forceProvider;
+        abBucket = 'forced';
+      } else if (shouldUseABTest() && config.secondary && isProviderAvailable(config.secondary)) {
+        chosenProvider = config.secondary;
+        abBucket = 'secondary';
+      }
+
+      // Try primary provider
+      if (isProviderAvailable(chosenProvider)) {
+        try {
+          let result;
+          switch (chosenProvider) {
+            case 'deepseek':
+              result = await generateDeepSeek(messages);
+              break;
+            case 'openrouter':
+              result = await generateOpenRouter(messages);
+              break;
+            case 'groq':
+              result = await generateGroq(messages);
+              break;
+            default:
+              throw new Error(`Unknown provider: ${chosenProvider}`);
+          }
+          
+          console.log(`[AI] p=${result.provider} m=${result.model} t=${result.latencyMs}ms ab=${abBucket}`);
+          return { ...result, abBucket };
+        } catch (error) {
+          console.error(`[AI] Primary provider (${chosenProvider}) failed:`, error.message);
+        }
+      }
+
+      // Try secondary provider as failover
+      if (config.secondary && isProviderAvailable(config.secondary) && chosenProvider !== config.secondary) {
+        try {
+          let result;
+          switch (config.secondary) {
+            case 'deepseek':
+              result = await generateDeepSeek(messages);
+              break;
+            case 'openrouter':
+              result = await generateOpenRouter(messages);
+              break;
+            case 'groq':
+              result = await generateGroq(messages);
+              break;
+            default:
+              throw new Error(`Unknown secondary provider: ${config.secondary}`);
+          }
+          
+          console.log(`[AI] p=${result.provider} m=${result.model} t=${result.latencyMs}ms ab=failover`);
+          return { ...result, abBucket: 'failover' };
+        } catch (error) {
+          console.error(`[AI] Secondary provider (${config.secondary}) failed:`, error.message);
+        }
+      }
+
+      // All providers failed, return offline stub
+      console.log('[AI] All providers failed, using offline stub');
+      return generateOfflineStub();
+    };
+
+    // ===== END INLINE MULTI-PROVIDER AI ROUTER =====
+
+    // AI Response Logic
     const systemPrompt = `You are ${girl.name}, a warm and human-like AI companion. ${girl.persona || 'You are friendly and engaging.'}
 
 Key guidelines:
@@ -465,56 +679,26 @@ Key guidelines:
     const characterMemory = girl.bioMemory ? girl.bioMemory.join('. ') : '';
     const fullUserMessage = characterMemory ? `${characterMemory}. ${userMsg}` : userMsg;
 
-    const messages = [
-      { role: "user", content: fullUserMessage }
-    ];
+    // Generate AI response
+    const aiResponse = await generateAI(systemPrompt, fullUserMessage);
+    
+    // Track chat message event with AI metadata
+    console.log(`📊 [analytics] chat_message: user=${userId}, girl=${girlId}, msg_length=${userMsg.length}, provider=${aiResponse.provider}, model=${aiResponse.model}, latency=${aiResponse.latencyMs}ms`);
 
-    try {
-      const aiResponse = await routeGenerate(systemPrompt, messages);
-      
-      // Track chat message event with AI metadata
-      console.log(`📊 [analytics] chat_message: user=${userId}, girl=${girlId}, msg_length=${userMsg.length}, provider=${aiResponse.chosenProvider}, model=${aiResponse.model}, latency=${aiResponse.latencyMs}ms`);
-
-      res.json({
-        ok: true,
-        data: {
-          reply: aiResponse.text,
-          balance: 1000,
-          meta: {
-            provider: aiResponse.chosenProvider,
-            model: aiResponse.model,
-            latencyMs: aiResponse.latencyMs,
-            usage: aiResponse.usage,
-            abBucket: aiResponse.abBucket
-          }
+    res.json({
+      ok: true,
+      data: {
+        reply: aiResponse.text,
+        balance: 1000,
+        meta: {
+          provider: aiResponse.provider,
+          model: aiResponse.model,
+          latencyMs: aiResponse.latencyMs,
+          abBucket: aiResponse.abBucket
         }
-      });
-    } catch (error) {
-      console.error('❌ [AI] Router error:', error);
-      
-      // Ultimate fallback
-      const fallbackReplies = [
-        `Прости, я задумалась 😅 — попробуй написать ещё раз.`,
-        `Хм, что-то я растерялась... Можешь повторить? 😊`,
-        `Ой, у меня сейчас проблемы с интернетом. Попробуй ещё раз! 🌐`
-      ];
-      const reply = fallbackReplies[Math.floor(Math.random() * fallbackReplies.length)];
+      }
+    });
 
-      res.json({
-        ok: true,
-        data: {
-          reply,
-          balance: 1000,
-          meta: {
-            provider: 'fallback',
-            model: 'none',
-            latencyMs: 0,
-            usage: { prompt: 0, completion: 0, total: 0 },
-            abBucket: 'error'
-          }
-        }
-      });
-    }
   } catch (e) {
     console.error('❌ Chat error:', e);
     res.status(500).json({ 
