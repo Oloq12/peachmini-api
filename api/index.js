@@ -602,77 +602,59 @@ app.post('/chat/test', (req, res) => {
 
 // Health check
 app.get('/health', (req, res) => {
-  const now = Date.now();
-  lastHealthCheck = now; // Записываем timestamp
-
-  console.log('[API] /health');
-
-  // AI Router status
-  const aiRouter = {
-    active: !!(process.env.DEEPSEEK_KEY || process.env.OPENROUTER_KEY || process.env.GROQ_KEY),
-    primary: process.env.AI_PRIMARY || 'deepseek',
-    secondary: process.env.AI_SECONDARY || null,
-    ab: Number(process.env.AI_AB_TEST || 0),
-    available: {
-      deepseek: Boolean(process.env.DEEPSEEK_KEY),
-      openrouter: Boolean(process.env.OPENROUTER_KEY),
-      groq: Boolean(process.env.GROQ_KEY)
-    }
-  };
-
-  res.json({
-    ok: true,
-    ts: now,
-    aiRouter,
-    version: '1.0.0'
-  });
+  console.log('[API] /health called');
+  
+  try {
+    res.json({
+      ok: true,
+      ts: Date.now(),
+      message: 'API is working'
+    });
+  } catch (error) {
+    console.error('[API] Health error:', error);
+    res.status(500).json({
+      ok: false,
+      error: 'Health check failed'
+    });
+  }
 });
 
 // Test endpoint for debugging
 app.get('/debug', (req, res) => {
-  res.json({
-    ok: true,
-    data: {
-      env: {
-        DEEPSEEK_KEY: process.env.DEEPSEEK_KEY ? 'SET' : 'NOT_SET',
-        AI_PRIMARY: process.env.AI_PRIMARY || 'NOT_SET',
-        AI_MODEL_PRIMARY: process.env.AI_MODEL_PRIMARY || 'NOT_SET',
-        AI_TEMP: process.env.AI_TEMP || 'NOT_SET',
-        AI_MAX_TOKENS: process.env.AI_MAX_TOKENS || 'NOT_SET',
-        AI_AB_TEST: process.env.AI_AB_TEST || 'NOT_SET'
-      }
-    }
-  });
+  console.log('[API] /debug called');
+  
+  try {
+    res.json({
+      ok: true,
+      message: 'Debug endpoint working',
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    console.error('[API] Debug error:', error);
+    res.status(500).json({
+      ok: false,
+      error: 'Debug failed'
+    });
+  }
 });
 
 // AI Debug endpoint - returns safe configuration without keys
 app.get('/api/debug/ai', (req, res) => {
-  // Check if debug is disabled
-  if (process.env.DEBUG_DISABLED === '1') {
-    return res.status(404).json({
+  console.log('[API] /api/debug/ai called');
+  
+  try {
+    res.json({
+      ok: true,
+      message: 'AI Debug endpoint working',
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    console.error('[API] AI Debug error:', error);
+    res.status(500).json({
       ok: false,
-      error: 'Debug endpoint disabled',
-      code: 'DEBUG_DISABLED'
+      error: 'AI Debug failed'
     });
   }
-
-  console.log('[API] /api/debug/ai called');
-
-  res.json({
-    ok: true,
-    data: {
-      primary: process.env.AI_PRIMARY || 'deepseek',
-      secondary: process.env.AI_SECONDARY || null,
-      modelPrimary: process.env.AI_MODEL_PRIMARY || 'deepseek-chat',
-      modelSecondary: process.env.AI_MODEL_SECONDARY || null,
-      ab: Number(process.env.AI_AB_TEST || 0),
-      available: {
-        deepseek: !!process.env.DEEPSEEK_KEY,
-        openrouter: !!process.env.OPENROUTER_KEY,
-        groq: !!process.env.GROQ_KEY
-      }
-    }
-  });
 });
 
 // Debug endpoint to see all environment variables
