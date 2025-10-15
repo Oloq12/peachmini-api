@@ -593,6 +593,18 @@ app.get('/debug', (req, res) => {
   });
 });
 
+// Debug endpoint to see all environment variables
+app.get('/api/debug-env', (req, res) => {
+  console.log('[API] /api/debug-env called');
+  res.json({
+    ok: true,
+    data: {
+      message: "Environment Variables as seen by Vercel runtime:",
+      env: process.env
+    }
+  });
+});
+
 // Status endpoint for uptime monitoring
 app.get('/status', (req, res) => {
   res.json({
