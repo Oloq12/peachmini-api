@@ -4,18 +4,7 @@ const cors = require('cors');
 const axios = require('axios');
 
 // Import AI router
-let routeGenerate, getRouterStatus;
-try {
-  const aiRouter = require('./ai/router');
-  routeGenerate = aiRouter.routeGenerate;
-  getRouterStatus = aiRouter.getRouterStatus;
-  console.log('✅ AI router imported successfully');
-} catch (error) {
-  console.error('❌ AI router import failed:', error.message);
-  // Fallback functions
-  routeGenerate = async () => ({ text: 'AI router not available', chosenProvider: 'fallback' });
-  getRouterStatus = () => ({ config: {}, availableProviders: [], primaryAvailable: false });
-}
+const { routeGenerate, getRouterStatus } = require('./ai/router');
 
 const app = express();
 
@@ -432,17 +421,16 @@ app.post('/chat/test', (req, res) => {
 app.get('/health', (req, res) => {
   const now = Date.now();
   lastHealthCheck = now; // Записываем timestamp
-
+  
   console.log('[API] /health');
-
+  
   // Get AI router status
   const routerStatus = getRouterStatus();
-
+  
   res.json({
     ok: true,
     data: {
       time: now,
-      version: "3.0.0",
       lastCheck: lastHealthCheck,
       pb: true, // Mock data available
       ai: routerStatus.primaryAvailable || routerStatus.secondaryAvailable,
@@ -462,24 +450,6 @@ app.get('/health', (req, res) => {
         aiProvider: process.env.AI_PRIMARY || 'deepseek',
         abTestPercent: parseInt(process.env.AI_AB_TEST || '0')
       }
-    }
-  });
-});
-
-// Test endpoint for debugging
-app.get('/debug', (req, res) => {
-  res.json({
-    ok: true,
-    data: {
-      env: {
-        DEEPSEEK_KEY: process.env.DEEPSEEK_KEY ? 'SET' : 'NOT_SET',
-        AI_PRIMARY: process.env.AI_PRIMARY || 'NOT_SET',
-        AI_MODEL_PRIMARY: process.env.AI_MODEL_PRIMARY || 'NOT_SET',
-        AI_TEMP: process.env.AI_TEMP || 'NOT_SET',
-        AI_MAX_TOKENS: process.env.AI_MAX_TOKENS || 'NOT_SET',
-        AI_AB_TEST: process.env.AI_AB_TEST || 'NOT_SET'
-      },
-      routerStatus: getRouterStatus()
     }
   });
 });
