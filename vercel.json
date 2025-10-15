@@ -40,67 +40,7 @@
   ],
   "rewrites": [
     {
-      "source": "/api/test",
-      "destination": "/api/test.js"
-    },
-    {
       "source": "/api/(.*)",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/health",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/girls",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/girls/(.*)",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/chat/reply",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/ref/status",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/ref/apply",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/quests/checkin",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/quests/status",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/quests/complete",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/payments/createInvoice",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/payments/webhook",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/payments/check",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/payments/packages",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/chats",
       "destination": "/api/index.js"
     },
     {
