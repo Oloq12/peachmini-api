@@ -1,130 +1,9 @@
 // Vercel Serverless API with Mock Data
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 
 // Inline AI Router (to avoid import issues)
-function getRouterConfig() {
-  return {
-    primary: process.env.AI_PRIMARY || 'deepseek',
-    secondary: process.env.AI_SECONDARY || undefined,
-    modelPrimary: process.env.AI_MODEL_PRIMARY || 'deepseek-chat',
-    modelSecondary: process.env.AI_MODEL_SECONDARY || undefined,
-    temperature: parseFloat(process.env.AI_TEMP || '0.9'),
-    maxTokens: parseInt(process.env.AI_MAX_TOKENS || '512'),
-    abTestPercent: parseInt(process.env.AI_AB_TEST || '0'),
-  };
-}
-
-function isProviderAvailable(provider) {
-  switch (provider) {
-    case 'deepseek':
-      return !!process.env.DEEPSEEK_KEY;
-    case 'openrouter':
-      return !!process.env.OPENROUTER_KEY;
-    case 'groq':
-      return !!process.env.GROQ_KEY;
-    default:
-      return false;
-  }
-}
-
-function getAvailableProviders() {
-  const providers = [];
-  if (isProviderAvailable('deepseek')) providers.push('deepseek');
-  if (isProviderAvailable('openrouter')) providers.push('openrouter');
-  if (isProviderAvailable('groq')) providers.push('groq');
-  return providers;
-}
-
-async function generateDeepSeek(request) {
-  const startTime = Date.now();
-  
-  const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.DEEPSEEK_KEY}`
-    },
-    body: JSON.stringify({
-      model: request.model,
-      messages: request.messages,
-      max_tokens: request.maxTokens,
-      temperature: request.temperature,
-      stream: false
-    }),
-    timeout: 30000
-  });
-
-  const data = await response.json();
-  if (!response.ok || !data.choices || data.choices.length === 0) {
-    throw new Error(`DeepSeek API error: ${data.error?.message || response.statusText}`);
-  }
-
-  const text = data.choices[0].message.content;
-  const usage = {
-    prompt: data.usage?.prompt_tokens || 0,
-    completion: data.usage?.completion_tokens || 0,
-    total: data.usage?.total_tokens || 0
-  };
-  const latencyMs = Date.now() - startTime;
-
-  return { text, usage, latencyMs, provider: 'deepseek' };
-}
-
-function generateOfflineStub() {
-  return {
-    text: "💬 Сейчас офлайн, но я с тобой. Расскажи, как прошёл твой день?",
-    usage: { prompt: 0, completion: 0, total: 0 },
-    latencyMs: 0,
-    provider: 'stub',
-    chosenProvider: 'stub',
-    model: 'offline',
-  };
-}
-
-async function routeGenerate(system, messages) {
-  const config = getRouterConfig();
-  const startTime = Date.now();
-
-  // Try primary provider
-  if (isProviderAvailable(config.primary)) {
-    try {
-      const request = {
-        provider: config.primary,
-        model: config.modelPrimary,
-        system,
-        messages,
-        maxTokens: config.maxTokens,
-        temperature: config.temperature
-      };
-      
-      if (config.primary === 'deepseek') {
-        const response = await generateDeepSeek(request);
-        return { ...response, chosenProvider: config.primary, abBucket: 'primary' };
-      }
-    } catch (error) {
-      console.error(`[AI Router] Primary provider (${config.primary}) failed:`, error.message);
-    }
-  }
-
-  // All providers failed, return offline stub
-  console.error('[AI Router] All configured AI providers failed or are unavailable, using offline stub.');
-  return { ...generateOfflineStub(), chosenProvider: 'stub', model: 'offline', abBucket: 'offline' };
-}
-
-function getRouterStatus() {
-  const config = getRouterConfig();
-  const availableProviders = getAvailableProviders();
-  
-  return {
-    config,
-    availableProviders,
-    primaryAvailable: isProviderAvailable(config.primary),
-    secondaryAvailable: config.secondary ? isProviderAvailable(config.secondary) : false
-  };
-}
 
 const app = express();
 
@@ -761,8 +640,7 @@ app.get('/debug', (req, res) => {
         AI_TEMP: process.env.AI_TEMP || 'NOT_SET',
         AI_MAX_TOKENS: process.env.AI_MAX_TOKENS || 'NOT_SET',
         AI_AB_TEST: process.env.AI_AB_TEST || 'NOT_SET'
-      },
-      routerStatus: getRouterStatus()
+      }
     }
   });
 });
