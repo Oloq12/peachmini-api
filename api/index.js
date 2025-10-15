@@ -728,15 +728,6 @@ app.get('/health', (req, res) => {
 
   console.log('[API] /health');
 
-  // Get version from package.json or default to 'dev'
-  let version = 'dev';
-  try {
-    const packageJson = require('./package.json');
-    version = packageJson?.version || 'dev';
-  } catch (error) {
-    console.log('[API] Could not read package.json, using default version');
-  }
-
   // AI Router status
   const aiRouter = {
     active: !!(process.env.DEEPSEEK_KEY || process.env.OPENROUTER_KEY || process.env.GROQ_KEY),
@@ -754,7 +745,7 @@ app.get('/health', (req, res) => {
     ok: true,
     ts: now,
     aiRouter,
-    version
+    version: '1.0.0'
   });
 });
 
