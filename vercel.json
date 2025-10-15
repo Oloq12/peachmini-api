@@ -1,15 +1,5 @@
 {
   "version": 2,
-  "crons": [
-    {
-      "path": "/api/health",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/heartbeat/check",
-      "schedule": "*/5 * * * *"
-    }
-  ],
   "builds": [
     {
       "src": "api/test.js",
