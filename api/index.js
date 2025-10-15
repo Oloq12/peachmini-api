@@ -729,8 +729,13 @@ app.get('/health', (req, res) => {
   console.log('[API] /health');
 
   // Get version from package.json or default to 'dev'
-  const packageJson = require('./package.json');
-  const version = packageJson?.version || 'dev';
+  let version = 'dev';
+  try {
+    const packageJson = require('./package.json');
+    version = packageJson?.version || 'dev';
+  } catch (error) {
+    console.log('[API] Could not read package.json, using default version');
+  }
 
   // AI Router status
   const aiRouter = {
