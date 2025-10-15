@@ -51,7 +51,7 @@ async function routeGenerate(system, messages) {
 
   // Check if A/B testing is enabled
   const useABTest = shouldUseABTest(config.abTestPercent);
-  let abBucket: string | undefined;
+  let abBucket;
 
   if (useABTest && config.secondary && config.modelSecondary) {
     abBucket = 'secondary';
