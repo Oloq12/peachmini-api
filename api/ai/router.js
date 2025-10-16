@@ -3,7 +3,7 @@
  * Handles provider selection, failover logic, and A/B testing
  */
 
-const { generate, isProviderAvailable } = require('./providers');
+import { generate, isProviderAvailable } from './providers.js';
 
 /**
  * Get router configuration from environment variables
@@ -168,7 +168,7 @@ function getRouterStatus() {
   };
 }
 
-module.exports = {
+export {
   routeGenerate,
   getRouterStatus
 };

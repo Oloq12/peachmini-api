@@ -1,5 +1,5 @@
 // Simple test endpoint for Vercel
-module.exports = (req, res) => {
+export default async function handler(req, res) {
   console.log('[API] /api/test called');
   
   try {
@@ -15,4 +15,4 @@ module.exports = (req, res) => {
       error: 'Test failed'
     });
   }
-};
+}

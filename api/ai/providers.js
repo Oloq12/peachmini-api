@@ -175,7 +175,7 @@ function getAvailableProviders() {
   return providers.filter(isProviderAvailable);
 }
 
-module.exports = {
+export {
   generate,
   isProviderAvailable,
   getAvailableProviders

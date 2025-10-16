@@ -1,5 +1,5 @@
 // Telegram webhook endpoint
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   console.log('📱 Telegram webhook received:', req.body);
   
   try {
@@ -27,4 +27,4 @@ module.exports = async (req, res) => {
     console.error('❌ Telegram webhook error:', error);
     res.status(500).json({ ok: false, error: 'Webhook failed' });
   }
-};
+}
