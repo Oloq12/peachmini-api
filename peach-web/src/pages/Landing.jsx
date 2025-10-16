@@ -301,6 +301,42 @@ export default function Landing() {
         </div>
       </div>
 
+      {/* CTA Button */}
+      <div style={{
+        textAlign: 'center',
+        marginBottom: '60px'
+      }}>
+        <button
+          onClick={() => {
+            // Navigate to home page
+            window.location.href = '/home';
+          }}
+          style={{
+            background: 'linear-gradient(135deg, #a78bfa 0%, #ec4899 50%, #f59e0b 100%)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '16px',
+            padding: '16px 32px',
+            fontSize: '1.125rem',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            boxShadow: '0 8px 32px rgba(167, 139, 250, 0.4)',
+            transition: 'all 0.3s ease',
+            minWidth: '200px'
+          }}
+          onMouseOver={(e) => {
+            e.target.style.transform = 'translateY(-2px)';
+            e.target.style.boxShadow = '0 12px 40px rgba(167, 139, 250, 0.6)';
+          }}
+          onMouseOut={(e) => {
+            e.target.style.transform = 'translateY(0)';
+            e.target.style.boxShadow = '0 8px 32px rgba(167, 139, 250, 0.4)';
+          }}
+        >
+          🚀 Начать общение
+        </button>
+      </div>
+
       {/* Footer */}
       <div style={{
         textAlign: 'center',
