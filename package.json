@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Telegram AI-Girlfriend bot on Telegraf + PocketBase + OpenAI",
   "license": "MIT",
-  "type": "commonjs",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "pb": "pocketbase serve",

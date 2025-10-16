@@ -1,41 +1,16 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/test.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/index.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "peach-web/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    }
-  ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Content-Security-Policy",
-          "value": "frame-ancestors https://web.telegram.org https://*.telegram.org https://t.me https://*.t.me"
-        }
-      ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/peach-web/$1"
-    }
+  "functions": { 
+    "api/**/*.[jt]s": { 
+      "runtime": "nodejs18.x", 
+      "memory": 256, 
+      "maxDuration": 15 
+    } 
+  },
+  "routes": [ 
+    { 
+      "src": "/api/(.*)", 
+      "dest": "/api/$1" 
+    } 
   ]
 }
